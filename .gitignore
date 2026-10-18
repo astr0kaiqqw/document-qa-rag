@@ -5,3 +5,6 @@ __pycache__/
 .DS_Store
 uploads/*
 !uploads/.gitkeep
+
+# Locally trained QA model
+/models/
