@@ -9,7 +9,7 @@ os.environ['TRANSFORMERS_OFFLINE'] = '1'
 os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 import argparse
 from collections import Counter
-import inspect
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -71,6 +71,7 @@ def historical_classes(revision):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--revision')
+    parser.add_argument('--independent',action='store_true',help='Fixed document set not used for parameter selection')
     parser.add_argument('--output',required=True,type=Path)
     parser.add_argument('--dataset',type=Path,default=ROOT/'quality/data/audit_questions.json')
     parser.add_argument('--split',choices=['all','dev','eval'],default='all')
@@ -118,7 +119,8 @@ def main():
             for subset in ['all','pdf','synthetic','en','ru','kk']:
                 selected=[r for r in rows if r['condition']==cond and (split=='all' or r['split']==split) and (subset=='all' or r['corpus']==subset or r['language']==subset)]
                 if selected:groups[f'{cond}/{split}/{subset}']=aggregate(selected)
-    result={'revision':args.revision or subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'working_tree':not bool(args.revision),'python':sys.version,'torch':torch.__version__,'dataset':str(args.dataset),'previously_exposed':True,'options':{'token_budget':args.token_budget,'selection':args.selection,'whole_words':not args.no_whole_words,'stride':args.stride},'budgets':budgets,'summary':groups,'rows':rows}
+    result={'revision':args.revision or subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),'working_tree':not bool(args.revision),'python':sys.version,'torch':torch.__version__,'dataset':str(args.dataset),'previously_exposed':not args.independent,'exposure_note':'Independent means not used for parameter selection; every evaluated set becomes exposed after this run','options':{'token_budget':args.token_budget,'selection':args.selection,'whole_words':not args.no_whole_words,'stride':args.stride},'budgets':budgets,'summary':groups,'rows':rows}
+    result['production_source_hashes'] = {str(p.relative_to(ROOT)):hashlib.sha256(p.read_bytes()).hexdigest() for p in (ROOT/'rag').glob('*.py')}
     args.output.parent.mkdir(parents=True,exist_ok=True);args.output.write_text(json.dumps(result,ensure_ascii=False,indent=2));print(json.dumps(groups.get('pipeline/eval/all',groups.get('oracle/eval/all')),indent=2))
 
 if __name__=='__main__':main()

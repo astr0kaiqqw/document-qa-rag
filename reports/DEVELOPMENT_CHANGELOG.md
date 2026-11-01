@@ -57,4 +57,14 @@ Commit: `5315874` (проверено `git log`).
 Файлы: `rag/qa_model.py`, `tests/test_qa_model.py`, `tests/test_local_quality.py`.
 Исправление: bounded per-window top-N heap и глобальные уникальные top-N; CPU tensors преобразуются в списки перед поиском spans. Число сохраняемых кандидатов не растёт пропорционально числу окон. Tokenization всего context по-прежнему требует линейной памяти.
 Проверки: 20 decoder tests passed; 25 decoder + real local-weight tests passed. Все 56 audit oracle/pipeline predictions совпали до/после bounded decoder; полного speed benchmark не проводилось. Настоящие tests покрывают EN/RU/KK spans, checkpoint/tokenizer и offline pipeline.
+Commit: `60485eb` (проверено `git log`).
+
+## Шаг 7 — Независимая оценка и честная фиксация регрессий
+
+Файлы: `quality/evaluate.py`, `quality/summarize.py`, `quality/data/independent_questions.json`, `tests/test_quality_metrics.py`, `reports/quality_metrics.json`.
+Baseline повторён из кода Git `f69c57f` на тех же локальных весах; предыдущий аудит не перезаписан. Дополнительно 8 answerable + 4 unanswerable вопроса на выдержках docstrings Python/NumPy, с дословными gold и provenance, зафиксированными до inference. Этот набор не использовался для подбора; после оценки он считается просмотренным. Raw predictions/hits сохранены локально и исключены из Git; компактный snapshot и fixtures включены.
+Проверки: 4 metric/fixture tests passed; полный suite **127 passed, 0 failed**. Пакетные зависимости: `pip check` — No broken requirements found.
+Результат старого eval n=20: pipeline EM 10→15%, F1 41.02→48.59%, Recall@3 70→90%, invalid 15→0%. Oracle F1 54.71→73.54%. No-boundaries ablation oracle F1 63.71%, то есть whole-word ограничения дают измеримый вклад.
+Регрессия нового n=8: pipeline F1 72.80→56.55%, EM 37.5→25%; Recall@1 100→75%, Recall@3 100→100%. Параметры после этого не подбирались. RU/KK в общем audit corpus тоже регрессируют (по одному вопросу). Надёжный no-answer не достигнут.
+Оригинальные модель/tokenizer/notebook/PDF/evaluation: 8 файлов проверены hashes, изменений нет. Только ожидаемые исходные untracked evaluation/experiments остаются вне новых коммитов.
 Commit: фактический hash будет внесён следующим шагом.
