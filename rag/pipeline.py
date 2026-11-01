@@ -29,6 +29,7 @@ class RAGPipeline:
         embedding_token_limit=96,
         token_overlap=24,
         answer_selection="retrieval",
+        context_expansion=False,
     ):
         if chunk_size <= 0:
             raise ValueError("chunk_size must be greater than zero")
@@ -43,6 +44,7 @@ class RAGPipeline:
         if answer_selection not in STRATEGIES:
             raise ValueError("Unknown answer selection strategy")
         self.answer_selection = answer_selection
+        self.context_expansion = context_expansion
         self.token_aware_chunking = token_aware_chunking
         self.embedding_token_limit = embedding_token_limit
         self.token_overlap = token_overlap
@@ -120,25 +122,26 @@ class RAGPipeline:
             self.qa_model = QAModel()
         response['no_answer_supported'] = bool(getattr(self.qa_model, 'supports_no_answer', False))
         candidates = []
+        seen_contexts = set()
         for rank, hit in enumerate(hits,1):
-            chunk = hit["chunk"]
-            if not chunk.strip():
-                continue
             index = hit.get("index",rank-1)
-            if callable(getattr(self.qa_model, "candidates", None)):
-                extracted = self.qa_model.candidates(question,chunk,top_n=1)
-            else:
-                # Compatible with string-returning custom QA backends; reject fabricated spans.
-                answer = self.qa_model.answer(question,chunk).strip()
-                a = chunk.find(answer) if answer else -1
-                extracted = [dict(answer=answer,start=a,end=a+len(answer),log_score=None)] if a>=0 else []
-            for span in extracted:
-                a,b = span['start'],span['end']
-                metadata = self.chunk_metadata[index] if "index" in hit and 0 <= index < len(self.chunk_metadata) else None
-                candidates.append(dict(span,source=chunk,chunk_index=index,retrieval_rank=rank,
-                    retrieval_score=float(hit['score']),
-                    document_start=metadata.start+a if metadata else None,
-                    document_end=metadata.start+b if metadata else None))
+            for chunk, source_offset in self._evidence_contexts(hit):
+                context_key = (source_offset,chunk)
+                if not chunk.strip() or context_key in seen_contexts:
+                    continue
+                seen_contexts.add(context_key)
+                if callable(getattr(self.qa_model, "candidates", None)):
+                    extracted = self.qa_model.candidates(question,chunk,top_n=1)
+                else:
+                    answer = self.qa_model.answer(question,chunk).strip()
+                    a = chunk.find(answer) if answer else -1
+                    extracted = [dict(answer=answer,start=a,end=a+len(answer),log_score=None)] if a>=0 else []
+                for span in extracted:
+                    a,b = span['start'],span['end']
+                    candidates.append(dict(span,source=chunk,chunk_index=index,retrieval_rank=rank,
+                        retrieval_score=float(hit['score']),
+                        document_start=source_offset+a if source_offset is not None else None,
+                        document_end=source_offset+b if source_offset is not None else None))
         ranked = rank_candidates(candidates,self.answer_selection)
         response['candidates'] = ranked
         if not ranked:
@@ -154,3 +157,25 @@ class RAGPipeline:
                         document_start=selected['document_start'],document_end=selected['document_end'],
                         pages=selected['pages'])
         return response
+
+    def _evidence_contexts(self, hit):
+        """Search small chunks; read their original pages/paragraphs independently.
+
+        Splitting PDF evidence by page avoids mixing adjacent slides into an
+        unrelated QA context and keeps source offsets and page attribution exact.
+        """
+        index=hit.get('index',-1)
+        metadata=self.chunk_metadata[index] if 0<=index<len(self.chunk_metadata) else None
+        if not self.context_expansion or metadata is None:
+            return [(hit['chunk'],metadata.start if metadata else None)]
+        pages=[p for p in self.document_pages if p.number is not None and
+               p.start<metadata.end and p.end>metadata.start]
+        if pages:
+            return [(self.document_text[p.start:p.end],p.start) for p in pages]
+        left=self.document_text.rfind('\n\n',0,metadata.start)
+        left=left+2 if left>=0 else 0
+        right=self.document_text.find('\n\n',metadata.end)
+        right=right if right>=0 else len(self.document_text)
+        left=max(left,metadata.start-2000)
+        right=min(right,metadata.end+2000)
+        return [(self.document_text[left:right],left)]

@@ -186,3 +186,16 @@ def test_detailed_answer_traces_source_without_claiming_confidence(pipeline, doc
     assert pipeline.document_text[result['document_start']:result['document_end']] == result['answer']
     assert result['document_path'] == document
     assert result['candidates'][0]['retrieval_rank'] == 1
+
+
+def test_pdf_evidence_expands_to_separate_original_pages():
+    from rag.chunker import TextChunk
+    from rag.document_loader import SourcePage
+    pipe=RAGPipeline(context_expansion=True)
+    first='The classifier is logistic regression.'
+    second='Another slide about vectors.'
+    pipe.document_text=first+'\n\n'+second
+    pipe.document_pages=(SourcePage(1,0,len(first),first),SourcePage(2,len(first)+2,len(pipe.document_text),second))
+    pipe.chunk_metadata=[TextChunk(pipe.document_text[10:],10,len(pipe.document_text),20)]
+    contexts=pipe._evidence_contexts(dict(index=0,chunk=pipe.chunk_metadata[0].text))
+    assert contexts==[(first,0),(second,len(first)+2)]
