@@ -95,3 +95,18 @@ def test_window_top_n_has_consistent_order_and_unique_offsets(tokenizer):
     assert len(top)==5
     assert len({(c['start'],c['end']) for c in top})==5
     assert all(a['log_score']>=b['log_score'] for a,b in zip(top,top[1:]))
+
+
+def test_native_null_outscores_span(tokenizer):
+    qa=decoder(tokenizer,'Paris')
+    qa.supports_no_answer=True
+    assert qa.candidates('Which city?','The city is Paris.')==[]
+    assert qa.answer('Which city?','The city is Paris.')==''
+
+
+def test_native_span_outscores_null(tokenizer):
+    qa=decoder(tokenizer,'Paris')
+    qa.supports_no_answer=True
+    word=tokenizer('Paris',add_special_tokens=False)['input_ids'][0]
+    qa.model=LogitModel({word:(20.,20.),tokenizer.cls_token_id:(-10.,-10.)})
+    assert qa.answer('Which city?','The city is Paris.')=='Paris'

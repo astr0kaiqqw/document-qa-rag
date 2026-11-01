@@ -118,6 +118,7 @@ class RAGPipeline:
             return response
         if self.qa_model is None:
             self.qa_model = QAModel()
+        response['no_answer_supported'] = bool(getattr(self.qa_model, 'supports_no_answer', False))
         candidates = []
         for rank, hit in enumerate(hits,1):
             chunk = hit["chunk"]
@@ -141,7 +142,7 @@ class RAGPipeline:
         ranked = rank_candidates(candidates,self.answer_selection)
         response['candidates'] = ranked
         if not ranked:
-            response['status'] = 'no_admissible_span'
+            response['status'] = 'no_answer' if response['no_answer_supported'] else 'no_admissible_span'
             return response
         for candidate in ranked:
             a,b = candidate['document_start'],candidate['document_end']

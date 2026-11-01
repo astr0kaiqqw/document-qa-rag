@@ -10,8 +10,8 @@ MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 class EmbeddingModel:
     """Convert text into numerical vectors."""
 
-    def __init__(self, *, local_files_only=True):
-        self.model = SentenceTransformer(MODEL_NAME, local_files_only=local_files_only)
+    def __init__(self, *, local_files_only=True, model_path=MODEL_NAME):
+        self.model = SentenceTransformer(str(model_path), local_files_only=local_files_only)
 
     def encode(self, texts: list[str]) -> np.ndarray:
         """Generate normalized embeddings for a list of texts."""

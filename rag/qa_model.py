@@ -9,6 +9,7 @@ import torch
 from transformers import AutoTokenizer, AutoModelForQuestionAnswering
 
 DEFAULT_MODEL_PATH = Path(__file__).resolve().parent.parent / 'models' / 'final_qa_model'
+APPLICATION_MODEL_PATH = DEFAULT_MODEL_PATH.parent / 'extractive_qa'
 
 
 def _word_character(char: str) -> bool:
@@ -50,11 +51,16 @@ class QAModel:
     only means there was no admissible span, not a calibrated semantic refusal.
     """
 
+    supports_no_answer = False
+
     def __init__(self, model_path=DEFAULT_MODEL_PATH, *, max_answer_tokens=30,
                  max_length=512, stride=128, whole_words=True):
         if max_answer_tokens <= 0 or max_length < 4 or stride < 0:
             raise ValueError('Invalid QA token budget')
-        self.tokenizer = AutoTokenizer.from_pretrained(str(model_path), local_files_only=True)
+        # These checkpoints are BERT/SentencePiece, not Mistral regex tokenizers.
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            str(model_path), local_files_only=True, fix_mistral_regex=False
+        )
         self.model = AutoModelForQuestionAnswering.from_pretrained(str(model_path), local_files_only=True)
         if not self.tokenizer.is_fast:
             raise ValueError('QA requires a fast tokenizer with character offsets')
@@ -116,6 +122,10 @@ class QAModel:
                     if self.whole_words and not (valid_boundary(context, a) and valid_boundary(context, b)):
                         continue
                     score = start_values[start] + end_values[end]
+                    # SQuAD-2 window decision: CLS wins when its joint score is
+                    # at least as large as this non-null span. No fitted threshold.
+                    if getattr(self, 'supports_no_answer', False) and score <= null_score:
+                        continue
                     log_score = log_start_values[start] + log_end_values[end]
                     if not math.isfinite(log_score):
                         continue
@@ -141,3 +151,20 @@ class QAModel:
         """Preserve the original string-returning public API."""
         candidates = self.candidates(question, context, top_n=1)
         return candidates[0]['answer'] if candidates else ''
+
+
+class ExtractiveQAModel(QAModel):
+    """Application checkpoint: deepset/xlm-roberta-base-squad2, local files only.
+
+    Each window compares span logits with its own CLS/null logits. Windows with
+    no winning non-null span abstain. A positive span is still an uncertain
+    candidate, not a calibrated probability of correctness.
+    """
+    supports_no_answer = True
+
+    def __init__(self, model_path=APPLICATION_MODEL_PATH):
+        if not (Path(model_path) / 'model.safetensors').exists():
+            raise FileNotFoundError(
+                'QA model is not installed. Run: .venv/bin/python scripts/setup_models.py'
+            )
+        super().__init__(model_path,max_length=256,stride=128,max_answer_tokens=64)
