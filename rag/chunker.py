@@ -79,6 +79,15 @@ def token_chunk_text(text, tokenizer, *, max_tokens=128, overlap_tokens=24,
     if not offsets:
         raise ValueError('Document has no tokens with source offsets')
     boundaries = {match.end() for match in re.finditer(r'[.!?。！？](?:[\"\'”’)]*)?(?=\s|$)|\n\s*\n',text)}
+    def source_end(token_end):
+        if token_end == len(offsets):
+            return len(text)
+        # Include ignored format characters between tokens; only trim whitespace.
+        boundary = max(offsets[token_end - 1][1], offsets[token_end][0])
+        while boundary > offsets[token_end - 1][1] and text[boundary - 1].isspace():
+            boundary -= 1
+        return boundary
+
     chunks = []
     start = 0
     while start < len(offsets):
@@ -94,7 +103,7 @@ def token_chunk_text(text, tokenizer, *, max_tokens=128, overlap_tokens=24,
             if candidates:
                 end = candidates[-1]
         a = 0 if start == 0 else offsets[start][0]
-        b = len(text) if end == len(offsets) else offsets[end-1][1]
+        b = source_end(end)
         # Re-tokenization of a substring can differ at boundaries. Verify, never assume.
         while end > start:
             count = len(tokenizer(text[a:b], add_special_tokens=True, truncation=False,
@@ -105,7 +114,7 @@ def token_chunk_text(text, tokenizer, *, max_tokens=128, overlap_tokens=24,
             while end > start and _inside_word(text,offsets[end-1][1]):
                 end -= 1
             if end > start:
-                b=offsets[end-1][1]
+                b=source_end(end)
         if end <= start:
             raise ValueError('A single word exceeds the embedding token budget')
         chunks.append(TextChunk(text[a:b],a,b,count))

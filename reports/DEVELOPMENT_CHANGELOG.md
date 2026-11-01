@@ -67,4 +67,12 @@ Baseline повторён из кода Git `f69c57f` на тех же лока�
 Результат старого eval n=20: pipeline EM 10→15%, F1 41.02→48.59%, Recall@3 70→90%, invalid 15→0%. Oracle F1 54.71→73.54%. No-boundaries ablation oracle F1 63.71%, то есть whole-word ограничения дают измеримый вклад.
 Регрессия нового n=8: pipeline F1 72.80→56.55%, EM 37.5→25%; Recall@1 100→75%, Recall@3 100→100%. Параметры после этого не подбирались. RU/KK в общем audit corpus тоже регрессируют (по одному вопросу). Надёжный no-answer не достигнут.
 Оригинальные модель/tokenizer/notebook/PDF/evaluation: 8 файлов проверены hashes, изменений нет. Только ожидаемые исходные untracked evaluation/experiments остаются вне новых коммитов.
+Commit: `e02c24c` (проверено `git log`).
+
+## Шаг 8 — Сохранение скрытых символов на границах чанков
+
+Проблема обнаружена дополнительным regression test: при overlap=0 символ U+200B между token offsets мог выпадать из source chunks.
+Файлы: `rag/chunker.py`, `tests/test_token_chunker.py`.
+Исправление: включать в предыдущее source slice пропущенные tokenizer format characters между tokens; whitespace можно оставить вне границы, содержательные/форматирующие non-whitespace сохраняются. Проверяется реальный encoded budget полученного slice.
+Проверки: сначала воспроизведено 1 failed/11 passed, после исправления 12 passed. Все 56 audit oracle/pipeline predictions совпали с предыдущим final run; качество не объявляется выросшим из-за этого edge-case fix.
 Commit: фактический hash будет внесён следующим шагом.

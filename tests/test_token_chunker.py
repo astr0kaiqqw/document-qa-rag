@@ -51,3 +51,10 @@ def test_embedding_rejects_silent_document_and_query_truncation():
     model=EmbeddingModel()
     with pytest.raises(ValueError,match='exceeds'):
         model.encode(['content '*200])
+
+
+def test_no_overlap_keeps_ignored_format_characters_between_tokens(tokenizer):
+    text='alpha\u200b beta\u200b gamma\u200b delta\u200b epsilon\u200b zeta'
+    chunks=token_chunk_text(text,tokenizer,max_tokens=6,overlap_tokens=0,sentence_boundaries=False)
+    covered={i for c in chunks for i in range(c.start,c.end)}
+    assert all(i in covered for i,char in enumerate(text) if not char.isspace())
