@@ -1,6 +1,6 @@
 """Compose document processing, retrieval, and extractive QA."""
 
-from rag.document_loader import load_document
+from rag.document_loader import load_document, load_document_details
 from rag.chunker import chunk_text, token_chunk_text
 from rag.semantic_chunker import semantic_chunk_text
 from rag.embeddings import EmbeddingModel
@@ -48,6 +48,8 @@ class RAGPipeline:
         self.token_overlap = token_overlap
         self.chunk_metadata = []
         self.document_text = ""
+        self.document_pages = ()
+        self.extraction_diagnostics = ()
         self.document_path = ""
         self.chunk_size = chunk_size
         self.overlap = overlap
@@ -60,7 +62,8 @@ class RAGPipeline:
 
     def load_document(self, file_path: str):
         """Build a new document index; loader and indexing errors propagate."""
-        text = load_document(file_path)
+        document = load_document_details(file_path)
+        text = document.text
         if self.embedding_model is None:
             self.embedding_model = EmbeddingModel()
         metadata = []
@@ -84,6 +87,8 @@ class RAGPipeline:
         retriever = Retriever(self.embedding_model, store)
         self.chunk_metadata = metadata
         self.document_text = text
+        self.document_pages = document.pages
+        self.extraction_diagnostics = document.diagnostics
         self.document_path = str(file_path)
         self.vector_store = store
         self.retriever = retriever
@@ -107,7 +112,8 @@ class RAGPipeline:
         hits = self.retriever.retrieve(question, top_k=self.top_k)
         response = dict(question=question, answer="", source="", retrieval_score=0.0,
                         status="no_evidence", candidates=[], selection=self.answer_selection,
-                        no_answer_supported=False, document_path=self.document_path)
+                        no_answer_supported=False, document_path=self.document_path,
+                        extraction_diagnostics=list(self.extraction_diagnostics))
         if not hits:
             return response
         if self.qa_model is None:
@@ -137,8 +143,13 @@ class RAGPipeline:
         if not ranked:
             response['status'] = 'no_admissible_span'
             return response
+        for candidate in ranked:
+            a,b = candidate['document_start'],candidate['document_end']
+            candidate['pages'] = [p.number for p in self.document_pages
+                                  if p.number is not None and a is not None and p.start < b and p.end > a]
         selected = ranked[0]
         response.update(answer=selected['answer'],source=selected['source'],
                         retrieval_score=selected['retrieval_score'],status='candidate',
-                        document_start=selected['document_start'],document_end=selected['document_end'])
+                        document_start=selected['document_start'],document_end=selected['document_end'],
+                        pages=selected['pages'])
         return response

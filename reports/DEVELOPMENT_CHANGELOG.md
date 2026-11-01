@@ -30,5 +30,14 @@ Commit: `0a3b60c` (проверено `git log`).
 Исправление: `ask_detailed()` раскрывает кандидаты, координаты документа, источник, retrieval/QA ranks, диагностические scores; дубликаты одного source span исключаются, fabricated spans отвергаются. Старый `ask()` сохраняет четыре поля. Статус `candidate` не означает доказанную правильность; пустой evidence/невалидный span дают прозрачный отказ.
 Dev сравнение retrieval/conditional QA log-softmax/RRF: все F1 69.26%, EM 0%, Recall@3 100% (n=6). Поэтому retrieval остаётся default; альтернативы явно opt-in, raw logits как вероятности не используются. Бонус длины не включён.
 No-answer: 6 answerable и 7 unanswerable dev probes. log_score диапазоны пересекаются. CLS margin разделяет именно этот маленький набор, но этого недостаточно для надёжного порога; без слепой калибровки threshold не включается. `no_answer_supported=False`.
-Проверки: 29 affected tests passed, затем полный suite (с дополнительным traceability test) перед коммитом.
+Проверки: 29 affected tests passed, затем полный suite 107 passed.
+Commit: `e6e8ab9` (проверено `git log`).
+
+## Шаг 4 — PDF normalization и page provenance
+
+Проблема: отсутствовали diagnostics о пустых/неотображаемых glyphs и координаты страниц.
+Файлы: `rag/document_loader.py`, `rag/pipeline.py`, `tests/test_document_loader.py`.
+Исправление: удаляются только NUL/soft hyphen, нормализуются CR/LF. Сохраняются абзацы, формулы, исходные raw page strings и координаты normalized document. Пустые страницы и private-use/replacement glyphs дают ExtractionWarning и diagnostics; ask_detailed возвращает номера страниц. Неоднозначные слитные слова не изменяются.
+Проверки: 37 loader/pipeline tests passed; dev end-to-end повторён, качество сравнено с token-aware dev baseline (без заявления semantic improvement от normalization).
+Ограничение: raw text — результат pypdf, а не OCR и не исходные glyph coordinates. Нельзя автоматически восстановить испорченные формулы.
 Commit: фактический hash будет внесён следующим шагом.
