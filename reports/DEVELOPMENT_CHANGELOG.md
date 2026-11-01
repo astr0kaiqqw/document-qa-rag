@@ -40,4 +40,13 @@ Commit: `e6e8ab9` (проверено `git log`).
 Исправление: удаляются только NUL/soft hyphen, нормализуются CR/LF. Сохраняются абзацы, формулы, исходные raw page strings и координаты normalized document. Пустые страницы и private-use/replacement glyphs дают ExtractionWarning и diagnostics; ask_detailed возвращает номера страниц. Неоднозначные слитные слова не изменяются.
 Проверки: 37 loader/pipeline tests passed; dev end-to-end повторён, качество сравнено с token-aware dev baseline (без заявления semantic improvement от normalization).
 Ограничение: raw text — результат pypdf, а не OCR и не исходные glyph coordinates. Нельзя автоматически восстановить испорченные формулы.
+Commit: `1808731` (проверено `git log`).
+
+## Шаг 5 — Проверенная подготовка данных для возможного обучения
+
+Проблема: исторические labels не сохранены, notebook source и output расходятся; truncation терял answer supervision.
+Файлы: `training/preprocessing.py`, `training/prepare.py`, `tests/test_training_preprocessing.py`.
+Исправление: проверить каждую аннотацию как точный source span до tokenization; sliding windows, несколько gold variants, CLS только для окна без полного ответа, source offsets и stable example ids отдельно от model inputs. CLI создаёт новый output с hashes и отказывается перезаписывать существующий. Обучение не запускается.
+Проверки: 7 preprocessing regression tests passed; CLI обработал все 28 audit examples с long-context overflow.
+Ограничение: это исправленная подготовка features, не доказательство, какие labels фактически использовались в Colab. Training runner/GPU run и fine-tuning потребуют отдельного согласования и зависимостей.
 Commit: фактический hash будет внесён следующим шагом.
