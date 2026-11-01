@@ -2,6 +2,7 @@
 from dataclasses import asdict, dataclass
 from pathlib import Path
 import math
+import heapq
 import unicodedata
 
 import torch
@@ -103,22 +104,36 @@ class QAModel:
             log_ends = torch.log_softmax(ends + mask, dim=0)
             cls = encoded['input_ids'][window].tolist().index(self.tokenizer.cls_token_id)
             null_score = starts[cls].item() + ends[cls].item()
+            window_best = []
+            start_values, end_values = starts.tolist(), ends.tolist()
+            log_start_values, log_end_values = log_starts.tolist(), log_ends.tolist()
+            source_offsets = offsets[window].tolist()
             for start in indices:
                 for end in range(start, min(start + self.max_answer_tokens, indices[-1] + 1)):
-                    a, b = offsets[window, start, 0].item(), offsets[window, end, 1].item()
+                    a, b = source_offsets[start][0], source_offsets[end][1]
                     if not (0 <= a < b <= len(context)) or not context[a:b].strip():
                         continue
                     if self.whole_words and not (valid_boundary(context, a) and valid_boundary(context, b)):
                         continue
-                    score = starts[start].item() + ends[end].item()
-                    log_score = log_starts[start].item() + log_ends[end].item()
+                    score = start_values[start] + end_values[end]
+                    log_score = log_start_values[start] + log_end_values[end]
                     if not math.isfinite(log_score):
                         continue
                     candidate = AnswerCandidate(context[a:b], a, b, score, log_score,
                                                 score - null_score, window)
-                    key = (a, b)
-                    if key not in unique or log_score > unique[key].log_score:
-                        unique[key] = candidate
+                    entry = (log_score, -a, -b, -start, -end, candidate)
+                    if len(window_best) < top_n:
+                        heapq.heappush(window_best, entry)
+                    elif entry[:5] > window_best[0][:5]:
+                        heapq.heapreplace(window_best, entry)
+            for entry in window_best:
+                candidate = entry[-1]
+                key = (candidate.start, candidate.end)
+                if key not in unique or candidate.log_score > unique[key].log_score:
+                    unique[key] = candidate
+            # A window contributes at most top_n spans; retain only the global best.
+            unique = {(c.start,c.end): c for c in sorted(
+                unique.values(), key=lambda c: (-c.log_score,c.start,c.end))[:top_n]}
         ranked = sorted(unique.values(), key=lambda c: (-c.log_score, c.start, c.end))
         return [asdict(c) for c in ranked[:top_n]]
 

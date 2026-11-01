@@ -84,3 +84,14 @@ def test_invalid_inputs(tokenizer,question,context):
 def test_question_cannot_consume_all_context_budget(tokenizer):
     with pytest.raises(ValueError,match='budget'):
         decoder(tokenizer,'value',max_length=8).answer('many words '*20,'value')
+
+
+def test_window_top_n_has_consistent_order_and_unique_offsets(tokenizer):
+    qa=decoder(tokenizer,'violet','lantern')
+    text=('The code is violet lantern. Routine reports. '*40)
+    top=qa.candidates('Which code?',text,top_n=5)
+    first=qa.candidates('Which code?',text,top_n=1)
+    assert top[0]==first[0]
+    assert len(top)==5
+    assert len({(c['start'],c['end']) for c in top})==5
+    assert all(a['log_score']>=b['log_score'] for a,b in zip(top,top[1:]))

@@ -49,4 +49,12 @@ Commit: `1808731` (проверено `git log`).
 Исправление: проверить каждую аннотацию как точный source span до tokenization; sliding windows, несколько gold variants, CLS только для окна без полного ответа, source offsets и stable example ids отдельно от model inputs. CLI создаёт новый output с hashes и отказывается перезаписывать существующий. Обучение не запускается.
 Проверки: 7 preprocessing regression tests passed; CLI обработал все 28 audit examples с long-context overflow.
 Ограничение: это исправленная подготовка features, не доказательство, какие labels фактически использовались в Colab. Training runner/GPU run и fine-tuning потребуют отдельного согласования и зависимостей.
+Commit: `5315874` (проверено `git log`).
+
+## Шаг 6 — Ограничение памяти decoder и настоящие offline regression tests
+
+Проблема: на длинном context декодер накапливал все admissible spans для всех окон.
+Файлы: `rag/qa_model.py`, `tests/test_qa_model.py`, `tests/test_local_quality.py`.
+Исправление: bounded per-window top-N heap и глобальные уникальные top-N; CPU tensors преобразуются в списки перед поиском spans. Число сохраняемых кандидатов не растёт пропорционально числу окон. Tokenization всего context по-прежнему требует линейной памяти.
+Проверки: 20 decoder tests passed; 25 decoder + real local-weight tests passed. Все 56 audit oracle/pipeline predictions совпали до/после bounded decoder; полного speed benchmark не проводилось. Настоящие tests покрывают EN/RU/KK spans, checkpoint/tokenizer и offline pipeline.
 Commit: фактический hash будет внесён следующим шагом.
