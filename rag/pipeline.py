@@ -1,7 +1,7 @@
 """Compose document processing, retrieval, and extractive QA."""
 
 from rag.document_loader import load_document
-from rag.chunker import chunk_text
+from rag.chunker import chunk_text, token_chunk_text
 from rag.semantic_chunker import semantic_chunk_text
 from rag.embeddings import EmbeddingModel
 from rag.vector_store import VectorStore
@@ -24,6 +24,9 @@ class RAGPipeline:
         overlap=36,
         top_k=3,
         use_semantic_chunking=True,
+        token_aware_chunking=True,
+        embedding_token_limit=96,
+        token_overlap=24,
     ):
         if chunk_size <= 0:
             raise ValueError("chunk_size must be greater than zero")
@@ -31,6 +34,16 @@ class RAGPipeline:
             raise ValueError("overlap must be non-negative and smaller than chunk_size")
         if top_k <= 0:
             raise ValueError("top_k must be positive")
+        if embedding_token_limit is not None and embedding_token_limit <= 2:
+            raise ValueError("embedding_token_limit must leave room for content")
+        if token_overlap < 0:
+            raise ValueError("token_overlap must be non-negative")
+        self.token_aware_chunking = token_aware_chunking
+        self.embedding_token_limit = embedding_token_limit
+        self.token_overlap = token_overlap
+        self.chunk_metadata = []
+        self.document_text = ""
+        self.document_path = ""
         self.chunk_size = chunk_size
         self.overlap = overlap
         self.top_k = top_k
@@ -43,16 +56,30 @@ class RAGPipeline:
     def load_document(self, file_path: str):
         """Build a new document index; loader and indexing errors propagate."""
         text = load_document(file_path)
-        chunker = semantic_chunk_text if self.use_semantic_chunking else chunk_text
-        chunks = chunker(text, chunk_size=self.chunk_size, overlap=self.overlap)
-        if not chunks:
-            raise ValueError("Document contains no extractable chunks")
         if self.embedding_model is None:
             self.embedding_model = EmbeddingModel()
+        metadata = []
+        if self.token_aware_chunking:
+            limit = min(self.embedding_token_limit or self.embedding_model.model.max_seq_length,
+                        self.embedding_model.model.max_seq_length)
+            metadata = token_chunk_text(
+                text, self.embedding_model.model.tokenizer, max_tokens=limit,
+                overlap_tokens=self.token_overlap,
+                sentence_boundaries=self.use_semantic_chunking,
+            )
+            chunks = [chunk.text for chunk in metadata]
+        else:
+            chunker = semantic_chunk_text if self.use_semantic_chunking else chunk_text
+            chunks = chunker(text, chunk_size=self.chunk_size, overlap=self.overlap)
+        if not chunks:
+            raise ValueError("Document contains no extractable chunks")
         embeddings = self.embedding_model.encode(chunks)
         store = VectorStore(dimension=embeddings.shape[1])
         store.add(embeddings, chunks)
         retriever = Retriever(self.embedding_model, store)
+        self.chunk_metadata = metadata
+        self.document_text = text
+        self.document_path = str(file_path)
         self.vector_store = store
         self.retriever = retriever
 

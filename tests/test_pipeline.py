@@ -15,6 +15,10 @@ def pipeline(monkeypatch):
     embeddings.encode.side_effect = lambda texts: np.tile(
         np.array([[1.0, 0.0, 0.0]], dtype=np.float32), (len(texts), 1)
     )
+    from transformers import AutoTokenizer
+    from rag.embeddings import MODEL_NAME
+    embeddings.model.max_seq_length = 128
+    embeddings.model.tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, local_files_only=True)
     qa = Mock()
     qa.answer.return_value = "Python"
     monkeypatch.setattr(pipeline_module, "EmbeddingModel", Mock(return_value=embeddings))
@@ -120,6 +124,7 @@ def test_switch_chunkers(pipeline, document, monkeypatch, semantic):
     monkeypatch.setattr(pipeline_module, "semantic_chunk_text", semantic_chunker)
     monkeypatch.setattr(pipeline_module, "chunk_text", legacy_chunker)
     assert pipeline.use_semantic_chunking is True
+    pipeline.token_aware_chunking = False
     pipeline.use_semantic_chunking = semantic
     pipeline.load_document(document)
     selected, unused = (semantic_chunker, legacy_chunker) if semantic else (legacy_chunker, semantic_chunker)
@@ -147,6 +152,7 @@ def test_failed_reload_preserves_document(pipeline, document, tmp_path):
 
 
 def test_no_chunks(pipeline, document, monkeypatch):
+    pipeline.token_aware_chunking = False
     monkeypatch.setattr(pipeline_module, "semantic_chunk_text", Mock(return_value=[]))
     with pytest.raises(ValueError, match="no extractable chunks"):
         pipeline.load_document(document)
@@ -158,3 +164,15 @@ def test_no_chunks(pipeline, document, monkeypatch):
 def test_invalid_configuration(kwargs):
     with pytest.raises(ValueError):
         RAGPipeline(**kwargs)
+
+
+def test_token_index_preserves_document_coordinates(pipeline, tmp_path):
+    path = tmp_path / 'multilingual.txt'
+    text = 'English sentence.\n\nҚазақстан — мемлекет. Русский текст. ' * 70
+    path.write_text(text,encoding='utf-8')
+    pipeline.load_document(str(path))
+    assert pipeline.embedding_token_limit == 96
+    assert pipeline.document_text == text.strip()
+    for chunk in pipeline.chunk_metadata:
+        assert chunk.text == pipeline.document_text[chunk.start:chunk.end]
+        assert chunk.token_count <= 96
