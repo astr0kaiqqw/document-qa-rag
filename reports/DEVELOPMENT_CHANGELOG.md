@@ -75,4 +75,21 @@ Commit: `e02c24c` (проверено `git log`).
 Файлы: `rag/chunker.py`, `tests/test_token_chunker.py`.
 Исправление: включать в предыдущее source slice пропущенные tokenizer format characters между tokens; whitespace можно оставить вне границы, содержательные/форматирующие non-whitespace сохраняются. Проверяется реальный encoded budget полученного slice.
 Проверки: сначала воспроизведено 1 failed/11 passed, после исправления 12 passed. Все 56 audit oracle/pipeline predictions совпали с предыдущим final run; качество не объявляется выросшим из-за этого edge-case fix.
-Commit: фактический hash будет внесён следующим шагом.
+Commit: `689a54f` (проверено `git log`).
+
+## Сводка истории реализации
+
+| Шаг | Исправление | Основные проверки | Commit |
+|---|---|---|---|
+| 1 | QA offsets, boundaries, windows | 19 QA tests; full 88; oracle evaluation | b9b617f |
+| 2 | Token budgets/coverage | 38 affected; full 99; 23 pipeline; 3 dev budgets | 0a3b60c |
+| 3 | Candidate traceability/no-answer limits | 29 affected; full 107; 3 selection strategies | e6e8ab9 |
+| 4 | PDF provenance/diagnostics | 37 affected; dev E2E unchanged | 1808731 |
+| 5 | Training features, без обучения | 7 tests; CLI 28 examples/32 windows | 5315874 |
+| 6 | Bounded QA memory/local-model regressions | 25 tests; all 56 predictions unchanged | 60485eb |
+| 7 | Frozen baseline/new document evaluation | full 127; metric checks; regressions recorded | e02c24c |
+| 8 | Source format characters at chunk boundaries | reproduced failure; 12 passed; 56 predictions unchanged | 689a54f |
+
+Документация и зависимости: README/requirements/lock и четыре implementation reports обновлены по реальным результатам, без установки пакетов. Собственный hash documentation commit доступен через `git log -1 -- README.md reports/RAG_IMPLEMENTATION_REPORT.md` и приведён в финальном ответе; он не вписывается в собственное содержимое рекурсивно.
+
+Полный финальный suite после шага 8: **128 passed, 0 failed**, offline. Финальные audit и independent document evaluations повторены на коде после последнего production commit; метрики сохранены в `quality_metrics.json`. Семантические ограничения и регрессии не объявляются исправленными.

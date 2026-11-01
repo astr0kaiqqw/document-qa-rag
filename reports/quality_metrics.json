@@ -447,7 +447,7 @@
       }
     },
     "final": {
-      "revision": "60485eb36f5de8b350d51fc6106443d4cb10c478",
+      "revision": "689a54fafb7f703519aae392332368b5a68964ca",
       "working_tree": true,
       "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
       "torch": "2.14.1",
@@ -1056,7 +1056,7 @@
       }
     },
     "independent_final": {
-      "revision": "60485eb36f5de8b350d51fc6106443d4cb10c478",
+      "revision": "689a54fafb7f703519aae392332368b5a68964ca",
       "working_tree": true,
       "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
       "torch": "2.14.1",
@@ -2121,7 +2121,7 @@
     "models/final_qa_model/tokenizer.json": "4090062f481e3aa55dd19c721d5bfc62200effdda9f2b91a38c6f6351b1837a1"
   },
   "final_source_sha256": {
-    "rag/chunker.py": "98dcce6d92a0c7349e9e2dc54268d65379c20d9456a30f1d2809a849e582b2ef",
+    "rag/chunker.py": "ce76612f6ee335c89b6663f4dcccf38d6f9a10c25aea598cc0a91fcaaef84585",
     "rag/vector_store.py": "c1dec9d592b644bdb51109bfdcb497a7ab4b6d632e63709357698a2e3802f468",
     "rag/retriever.py": "75b33cfd8a4cc2583d67a7d53c43098ce018c40fe1184a610412911100eedfca",
     "rag/__init__.py": "ef2d9cfb38641a488225161a0a347381ce830609b26fcb28338819fe3749f0bb",
