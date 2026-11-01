@@ -8,3 +8,6 @@ uploads/*
 
 # Locally trained QA model
 /models/
+
+# Reproducible quality runs keep full predictions local
+/reports/local_results/

@@ -1,0 +1,254 @@
+[
+  {
+    "id": "q01",
+    "question": "What does Word2Vec learn?",
+    "context": "Word2Vec is a neural network technique that learns word embeddings.",
+    "answer": "word embeddings",
+    "kind": "definition",
+    "split": "dev",
+    "page": null
+  },
+  {
+    "id": "q02",
+    "question": "What is the goal of learning word vectors?",
+    "context": "The goal of learning word vectors is to adjust those word vectors to maximize the similarity of positive word pairs and minimize the similarity of negative word pairs.",
+    "answer": "to adjust those word vectors to maximize the similarity of positive word pairs and minimize the similarity of negative word pairs",
+    "kind": "long",
+    "split": "dev",
+    "page": null
+  },
+  {
+    "id": "q03",
+    "question": "What is the capital of France?",
+    "context": "The capital of France is Paris. It is a major European city.",
+    "answer": "Paris",
+    "kind": "fact",
+    "split": "dev",
+    "page": null
+  },
+  {
+    "id": "q04",
+    "question": "What does NLP stand for?",
+    "context": "NLP stands for Natural Language Processing. It is a field of artificial intelligence.",
+    "answer": "Natural Language Processing",
+    "kind": "multiword",
+    "split": "dev",
+    "page": null
+  },
+  {
+    "id": "q05",
+    "question": "Who introduced the Transformer architecture?",
+    "context": "The Transformer architecture was introduced by researchers at Google in 2017.",
+    "answer": "researchers at Google",
+    "kind": "multiword",
+    "split": "dev",
+    "page": null
+  },
+  {
+    "id": "q06",
+    "question": "Who created Python?",
+    "context": "Python was created by Guido van Rossum. Its first release appeared in 1991.",
+    "answer": "Guido van Rossum",
+    "kind": "multiword",
+    "split": "eval",
+    "page": null
+  },
+  {
+    "id": "q07",
+    "question": "When was the first release of Python?",
+    "context": "Python was created by Guido van Rossum. Its first release appeared in 1991.",
+    "answer": "1991",
+    "kind": "fact",
+    "split": "eval",
+    "page": null
+  },
+  {
+    "id": "q08",
+    "question": "What is photosynthesis?",
+    "context": "Photosynthesis is the process by which plants convert light energy into chemical energy.",
+    "answer": "the process by which plants convert light energy into chemical energy",
+    "kind": "definition",
+    "split": "eval",
+    "page": null
+  },
+  {
+    "id": "q09",
+    "question": "Where is the observatory located?",
+    "context": "The observatory is located on Mount Wilson in California. It houses several telescopes.",
+    "answer": "Mount Wilson in California",
+    "kind": "multiword",
+    "split": "eval",
+    "page": null
+  },
+  {
+    "id": "q10",
+    "question": "What carries oxygen in the blood?",
+    "context": "Hemoglobin carries oxygen in the blood. White blood cells help fight infections.",
+    "answer": "Hemoglobin",
+    "kind": "boundary_start",
+    "split": "eval",
+    "page": null
+  },
+  {
+    "id": "q11",
+    "question": "What is the largest planet in the solar system?",
+    "context": "Mercury is the smallest planet. The largest planet in the solar system is Jupiter.",
+    "answer": "Jupiter",
+    "kind": "boundary_end",
+    "split": "eval",
+    "page": null
+  },
+  {
+    "id": "q12",
+    "question": "Как называется столица Казахстана?",
+    "context": "Столица Казахстана называется Астана. Алматы является крупнейшим городом страны.",
+    "answer": "Астана",
+    "kind": "russian",
+    "split": "eval",
+    "page": null
+  },
+  {
+    "id": "q13",
+    "question": "Қазақстанның астанасы қай қала?",
+    "context": "Қазақстанның астанасы — Астана. Алматы — үлкен қала.",
+    "answer": "Астана",
+    "kind": "kazakh",
+    "split": "eval",
+    "page": null
+  },
+  {
+    "id": "q14",
+    "question": "Which protocol provides reliable ordered delivery?",
+    "context": "TCP provides reliable ordered delivery of bytes between applications. UDP sends independent datagrams.",
+    "answer": "TCP",
+    "kind": "fact",
+    "split": "eval",
+    "page": null
+  },
+  {
+    "id": "q15",
+    "question": "What does the backup policy require?",
+    "context": "The backup policy requires copying all project documents to two independent encrypted drives every Friday and checking that the copied files can be restored before deleting any old backup versions.",
+    "answer": "copying all project documents to two independent encrypted drives every Friday and checking that the copied files can be restored before deleting any old backup versions",
+    "kind": "long",
+    "split": "eval",
+    "page": null
+  },
+  {
+    "id": "q16",
+    "question": "What is the name of the experimental enzyme?",
+    "context": "The experimental enzyme is named Zeta-Q7. Its activity is measured in the laboratory.",
+    "answer": "Zeta-Q7",
+    "kind": "punctuation",
+    "split": "eval",
+    "page": null
+  },
+  {
+    "id": "q17",
+    "question": "What identifier was assigned to the sample?",
+    "context": "The sample was assigned the identifier AB-123/X. The identifier appears on the label.",
+    "answer": "AB-123/X",
+    "kind": "punctuation",
+    "split": "eval",
+    "page": null
+  },
+  {
+    "id": "q18",
+    "question": "What is stored in the archive?",
+    "context": "The archive stores letters,  maps, and photographs. The catalog is searchable.",
+    "answer": "letters,  maps, and photographs",
+    "kind": "whitespace",
+    "split": "eval",
+    "page": null
+  },
+  {
+    "id": "q19",
+    "question": "What is the access code?",
+    "context": "The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The record contains routine weather measurements. The access code is violet lantern.",
+    "answer": "violet lantern",
+    "kind": "beyond_512",
+    "split": "eval",
+    "page": null
+  },
+  {
+    "id": "q20",
+    "question": "What material forms the outer shell?",
+    "context": "The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The report lists routine equipment checks. The outer shell is made of titanium alloy.",
+    "answer": "titanium alloy",
+    "kind": "near_limit",
+    "split": "eval",
+    "page": null
+  },
+  {
+    "id": "q21",
+    "question": "Who invented this telescope?",
+    "context": "This telescope has a mirror two meters wide. The observatory opened in 1980.",
+    "answer": "",
+    "kind": "unanswerable",
+    "split": "dev",
+    "page": null
+  },
+  {
+    "id": "q22",
+    "question": "What is the password?",
+    "context": "The museum opens at nine and closes at five. Entry is free on Sundays.",
+    "answer": "",
+    "kind": "unanswerable",
+    "split": "eval",
+    "page": null
+  },
+  {
+    "id": "q23",
+    "question": "What is Word2vec?",
+    "context": "Word2vec\nPopular embedding method\n• Very fast to train\n• Code available on the web\nIdea:predictrather thancount\nWord2vec provides various options. We'll do:\nskip-gram with negative sampling (SGNS)",
+    "answer": "Popular embedding method",
+    "kind": "definition",
+    "split": "dev",
+    "page": 5
+  },
+  {
+    "id": "q24",
+    "question": "Which classifier is used to distinguish positive and negative examples?",
+    "context": "Approach: predict if candidate wordcis a \"neighbor\"\n1. Treat the target wordtand a neighboring context wordc\naspositive examples.\n2. Randomly sample other words in the lexicon to get\nnegative examples\n3. Use logistic regression to train a classifier to distinguish\nthose two cases\n4. Use the learned weights as the embeddings",
+    "answer": "logistic regression",
+    "kind": "fact",
+    "split": "eval",
+    "page": 7
+  },
+  {
+    "id": "q25",
+    "question": "How is similarity computed?",
+    "context": "Similarity is computed from dot product\nRemember: two vectors are similar if they have a high\ndot product\n◦ Cosine is just a normalized dot product\nSo:\n◦ Similarity(w,c)∝w · c\nWe’ll need to normalize to get a probability\n◦ (cosine isn't a probability either)\n64",
+    "answer": "dot product",
+    "kind": "fact",
+    "split": "eval",
+    "page": 10
+  },
+  {
+    "id": "q26",
+    "question": "Which function turns a dot product into a probability?",
+    "context": "Turning dot products into probabilities\nSim(w,c)≈w· c\nTo turn this into a probability\nWe'll use the sigmoid from logistic regression:\nP(+|w,c) =s(c·w) = 1\n1+exp(c·w)\nP(|w,c) =1P(+|w,c)\n=s(c·w) = 1\n1+exp(c·w)",
+    "answer": "sigmoid",
+    "kind": "fact",
+    "split": "eval",
+    "page": 11
+  },
+  {
+    "id": "q27",
+    "question": "How are the word weights learned?",
+    "context": "Learning the classifier\nHow to learn?\n◦ Stochastic gradient descent!\nWe’ll adjust the word weights to\n◦ make the positive pairs more likely\n◦ and the negative pairs less likely,\n◦ over the entire training set.",
+    "answer": "Stochastic gradient descent",
+    "kind": "fact",
+    "split": "eval",
+    "page": 22
+  },
+  {
+    "id": "q28",
+    "question": "Which two sets of embeddings does SGNS learn?",
+    "context": "Two sets of embeddings\nSGNS learns two sets of embeddings\nTarget embeddings matrix W\nContext embedding matrix C\nIt's common to just add them together,\nrepresenting wordias the vectorw i + ci",
+    "answer": "Target embeddings matrix W\nContext embedding matrix C",
+    "kind": "multiword",
+    "split": "eval",
+    "page": 27
+  }
+]
