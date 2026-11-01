@@ -7,10 +7,11 @@ from rag.embeddings import EmbeddingModel
 from rag.vector_store import VectorStore
 from rag.retriever import Retriever
 from rag.qa_model import QAModel
+from rag.answer_selection import rank_candidates, STRATEGIES
 
 
 class RAGPipeline:
-    """Answer questions from one loaded document using retrieval-ranked spans.
+    """Answer questions from one local document using traceable evidence spans.
 
     Retrieval scores measure similarity, not answer confidence or correctness.
     ``source`` is the chunk containing the selected answer. No available answer
@@ -27,6 +28,7 @@ class RAGPipeline:
         token_aware_chunking=True,
         embedding_token_limit=96,
         token_overlap=24,
+        answer_selection="retrieval",
     ):
         if chunk_size <= 0:
             raise ValueError("chunk_size must be greater than zero")
@@ -38,6 +40,9 @@ class RAGPipeline:
             raise ValueError("embedding_token_limit must leave room for content")
         if token_overlap < 0:
             raise ValueError("token_overlap must be non-negative")
+        if answer_selection not in STRATEGIES:
+            raise ValueError("Unknown answer selection strategy")
+        self.answer_selection = answer_selection
         self.token_aware_chunking = token_aware_chunking
         self.embedding_token_limit = embedding_token_limit
         self.token_overlap = token_overlap
@@ -84,31 +89,56 @@ class RAGPipeline:
         self.retriever = retriever
 
     def ask(self, question: str) -> dict:
-        """Extract from each hit and select by retrieval similarity only."""
+        """Original four-field response. Use ask_detailed for evidence and uncertainty."""
+        detailed = self.ask_detailed(question)
+        return {key: detailed[key] for key in
+                ("question", "answer", "source", "retrieval_score")}
+
+    def ask_detailed(self, question: str) -> dict:
+        """Evaluate all retrieved evidence; expose source coordinates and ranking.
+
+        `candidate` explicitly means unverified extractive output, not calibrated
+        confidence. SQuAD-v1 cannot certify semantic absence of an answer.
+        """
         if not isinstance(question, str) or not question.strip():
             raise ValueError("Question must be a non-empty string")
         if self.retriever is None:
             raise RuntimeError("Load a document before asking questions")
-        results = self.retriever.retrieve(question, top_k=self.top_k)
-        response = {
-            "question": question,
-            "answer": "",
-            "source": "",
-            "retrieval_score": 0.0,
-        }
-        if not results:
+        hits = self.retriever.retrieve(question, top_k=self.top_k)
+        response = dict(question=question, answer="", source="", retrieval_score=0.0,
+                        status="no_evidence", candidates=[], selection=self.answer_selection,
+                        no_answer_supported=False, document_path=self.document_path)
+        if not hits:
             return response
         if self.qa_model is None:
             self.qa_model = QAModel()
-        best_score = float("-inf")
-        for result in results:
-            answer = self.qa_model.answer(question, result["chunk"])
-            score = float(result["score"])
-            if answer and answer.strip() and score > best_score:
-                best_score = score
-                response.update(
-                    answer=answer.strip(),
-                    source=result["chunk"],
-                    retrieval_score=score,
-                )
+        candidates = []
+        for rank, hit in enumerate(hits,1):
+            chunk = hit["chunk"]
+            if not chunk.strip():
+                continue
+            index = hit.get("index",rank-1)
+            if callable(getattr(self.qa_model, "candidates", None)):
+                extracted = self.qa_model.candidates(question,chunk,top_n=1)
+            else:
+                # Compatible with string-returning custom QA backends; reject fabricated spans.
+                answer = self.qa_model.answer(question,chunk).strip()
+                a = chunk.find(answer) if answer else -1
+                extracted = [dict(answer=answer,start=a,end=a+len(answer),log_score=None)] if a>=0 else []
+            for span in extracted:
+                a,b = span['start'],span['end']
+                metadata = self.chunk_metadata[index] if "index" in hit and 0 <= index < len(self.chunk_metadata) else None
+                candidates.append(dict(span,source=chunk,chunk_index=index,retrieval_rank=rank,
+                    retrieval_score=float(hit['score']),
+                    document_start=metadata.start+a if metadata else None,
+                    document_end=metadata.start+b if metadata else None))
+        ranked = rank_candidates(candidates,self.answer_selection)
+        response['candidates'] = ranked
+        if not ranked:
+            response['status'] = 'no_admissible_span'
+            return response
+        selected = ranked[0]
+        response.update(answer=selected['answer'],source=selected['source'],
+                        retrieval_score=selected['retrieval_score'],status='candidate',
+                        document_start=selected['document_start'],document_end=selected['document_end'])
         return response

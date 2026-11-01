@@ -21,4 +21,14 @@ Commit: `b9b617f` (проверено `git log`).
 Проверены dev budgets 96/112/128 tokens: F1 pipeline 69.26/54.97/47.35%, Recall@3 100/83.33/83.33%; выбран 96, только по dev (6 answerable, малая выборка). На обоих корпусах 0 overlimit chunks при всех трёх budgets. Нет подбора по eval.
 Проверки: 38 affected tests passed; полный suite 99 passed, затем ещё 23 pipeline tests passed с новым тестом координат.
 Ограничение: token budget гарантирует покрытие, но не правильность semantic retrieval; слишком длинное единичное слово отклоняется явно.
-Commit: фактический hash будет внесён после создания в следующем шаге.
+Commit: `0a3b60c` (проверено `git log`).
+
+## Шаг 3 — Проверяемый выбор evidence и ограничения no-answer
+
+Проблема: нельзя было проследить кандидаты и координаты; сторонний QA backend мог вернуть строку вне источника.
+Файлы: `rag/answer_selection.py`, `rag/pipeline.py`, `quality/check_no_answer.py`, тесты selection/pipeline.
+Исправление: `ask_detailed()` раскрывает кандидаты, координаты документа, источник, retrieval/QA ranks, диагностические scores; дубликаты одного source span исключаются, fabricated spans отвергаются. Старый `ask()` сохраняет четыре поля. Статус `candidate` не означает доказанную правильность; пустой evidence/невалидный span дают прозрачный отказ.
+Dev сравнение retrieval/conditional QA log-softmax/RRF: все F1 69.26%, EM 0%, Recall@3 100% (n=6). Поэтому retrieval остаётся default; альтернативы явно opt-in, raw logits как вероятности не используются. Бонус длины не включён.
+No-answer: 6 answerable и 7 unanswerable dev probes. log_score диапазоны пересекаются. CLS margin разделяет именно этот маленький набор, но этого недостаточно для надёжного порога; без слепой калибровки threshold не включается. `no_answer_supported=False`.
+Проверки: 29 affected tests passed, затем полный suite (с дополнительным traceability test) перед коммитом.
+Commit: фактический hash будет внесён следующим шагом.

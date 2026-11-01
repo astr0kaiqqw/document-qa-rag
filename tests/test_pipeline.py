@@ -19,7 +19,7 @@ def pipeline(monkeypatch):
     from rag.embeddings import MODEL_NAME
     embeddings.model.max_seq_length = 128
     embeddings.model.tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, local_files_only=True)
-    qa = Mock()
+    qa = Mock(spec=["answer"])
     qa.answer.return_value = "Python"
     monkeypatch.setattr(pipeline_module, "EmbeddingModel", Mock(return_value=embeddings))
     monkeypatch.setattr(pipeline_module, "QAModel", Mock(return_value=qa))
@@ -90,7 +90,7 @@ def test_empty_retrieval(pipeline, document):
 @pytest.mark.parametrize("answer", ["", "   "])
 def test_empty_qa_answer(pipeline, document, answer):
     pipeline.load_document(document)
-    pipeline.qa_model = Mock()
+    pipeline.qa_model = Mock(spec=["answer"])
     pipeline.qa_model.answer.return_value = answer
     assert pipeline.ask("Question?") == {
         "question": "Question?", "answer": "", "source": "", "retrieval_score": 0.0
@@ -103,15 +103,15 @@ def test_answer_ranking_and_all_chunks_processed(pipeline, document):
     pipeline.retriever = Mock()
     pipeline.retriever.retrieve.return_value = [
         {"chunk": "empty", "score": 0.9},
-        {"chunk": "lower", "score": -0.5},
-        {"chunk": "best", "score": -0.1},
-        {"chunk": "last", "score": -0.8},
+        {"chunk": "lower answer", "score": -0.5},
+        {"chunk": "best answer", "score": -0.1},
+        {"chunk": "last answer", "score": -0.8},
     ]
-    pipeline.qa_model = Mock()
+    pipeline.qa_model = Mock(spec=["answer"])
     pipeline.qa_model.answer.side_effect = ["", "lower answer", " best answer ", "last answer"]
     result = pipeline.ask("Question?")
     assert result["answer"] == "best answer"
-    assert result["source"] == "best"
+    assert result["source"] == "best answer"
     assert result["retrieval_score"] == -0.1
     assert pipeline.qa_model.answer.call_count == 4
     pipeline.retriever.retrieve.assert_called_once_with("Question?", top_k=4)
@@ -176,3 +176,13 @@ def test_token_index_preserves_document_coordinates(pipeline, tmp_path):
     for chunk in pipeline.chunk_metadata:
         assert chunk.text == pipeline.document_text[chunk.start:chunk.end]
         assert chunk.token_count <= 96
+
+
+def test_detailed_answer_traces_source_without_claiming_confidence(pipeline, document):
+    pipeline.load_document(document)
+    result = pipeline.ask_detailed('What is a programming language?')
+    assert result['status'] == 'candidate'
+    assert result['no_answer_supported'] is False
+    assert pipeline.document_text[result['document_start']:result['document_end']] == result['answer']
+    assert result['document_path'] == document
+    assert result['candidates'][0]['retrieval_rank'] == 1
