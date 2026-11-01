@@ -93,3 +93,15 @@ Commit: `689a54f` (проверено `git log`).
 Документация и зависимости: README/requirements/lock и четыре implementation reports обновлены по реальным результатам, без установки пакетов. Собственный hash documentation commit доступен через `git log -1 -- README.md reports/RAG_IMPLEMENTATION_REPORT.md` и приведён в финальном ответе; он не вписывается в собственное содержимое рекурсивно.
 
 Полный финальный suite после шага 8: **128 passed, 0 failed**, offline. Финальные audit и independent document evaluations повторены на коде после последнего production commit; метрики сохранены в `quality_metrics.json`. Семантические ограничения и регрессии не объявляются исправленными.
+
+## Доставка приложения: `feat/final-document-qa`
+
+Пользователь сменил приоритет на готовый продукт без повторного исследования. Выбрана одна multilingual extractive QA модель `deepset/xlm-roberta-base-squad2`, добавлены native CLS/null, Streamlit UI, изолированные upload sessions, original-page evidence и launcher. Старый BERT/notebook не перезаписывались. Первоначальная загрузка модели и установка Streamlit/sentencepiece были явно разрешены; runtime остаётся offline.
+
+| Этап | Проверки | Commit |
+|---|---|---|
+| Один локальный XLM-R QA checkpoint + null | 52 профильных tests, real answer/null smoke | b9b2012 |
+| Backend sessions + исходные страницы | 31 tests; PDF/TXT/DOCX acceptance | 8410889 |
+| Готовый Streamlit UI и запуск | 32 UI/backend tests; полный suite 139 passed | 58023bc |
+
+Реальная приёмка: PDF → `logistic regression`, `embedding.pdf`, стр. 7; absent answer → null refusal; TXT → `Aurora`; DOCX → `Meridian`; selection/history/reset прошли; AppTest exceptions 0. Живой Streamlit server health → `ok`. Визуальный browser host недоступен, visual review не заявляется. Новый benchmark или сравнение нескольких моделей не проводились. Подробности продукта — `APPLICATION_DELIVERY.md`, запуск — README. Final documentation commit доступен в истории файлов и финальном ответе.
