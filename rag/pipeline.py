@@ -1,16 +1,17 @@
 """Compose document processing, retrieval, and extractive QA."""
 
-from rag.document_loader import load_document
-from rag.chunker import chunk_text
+from rag.document_loader import load_document, load_document_details
+from rag.chunker import chunk_text, token_chunk_text
 from rag.semantic_chunker import semantic_chunk_text
 from rag.embeddings import EmbeddingModel
 from rag.vector_store import VectorStore
 from rag.retriever import Retriever
 from rag.qa_model import QAModel
+from rag.answer_selection import rank_candidates, STRATEGIES
 
 
 class RAGPipeline:
-    """Answer questions from one loaded document using retrieval-ranked spans.
+    """Answer questions from one local document using traceable evidence spans.
 
     Retrieval scores measure similarity, not answer confidence or correctness.
     ``source`` is the chunk containing the selected answer. No available answer
@@ -24,6 +25,11 @@ class RAGPipeline:
         overlap=36,
         top_k=3,
         use_semantic_chunking=True,
+        token_aware_chunking=True,
+        embedding_token_limit=96,
+        token_overlap=24,
+        answer_selection="retrieval",
+        context_expansion=False,
     ):
         if chunk_size <= 0:
             raise ValueError("chunk_size must be greater than zero")
@@ -31,6 +37,22 @@ class RAGPipeline:
             raise ValueError("overlap must be non-negative and smaller than chunk_size")
         if top_k <= 0:
             raise ValueError("top_k must be positive")
+        if embedding_token_limit is not None and embedding_token_limit <= 2:
+            raise ValueError("embedding_token_limit must leave room for content")
+        if token_overlap < 0:
+            raise ValueError("token_overlap must be non-negative")
+        if answer_selection not in STRATEGIES:
+            raise ValueError("Unknown answer selection strategy")
+        self.answer_selection = answer_selection
+        self.context_expansion = context_expansion
+        self.token_aware_chunking = token_aware_chunking
+        self.embedding_token_limit = embedding_token_limit
+        self.token_overlap = token_overlap
+        self.chunk_metadata = []
+        self.document_text = ""
+        self.document_pages = ()
+        self.extraction_diagnostics = ()
+        self.document_path = ""
         self.chunk_size = chunk_size
         self.overlap = overlap
         self.top_k = top_k
@@ -42,46 +64,118 @@ class RAGPipeline:
 
     def load_document(self, file_path: str):
         """Build a new document index; loader and indexing errors propagate."""
-        text = load_document(file_path)
-        chunker = semantic_chunk_text if self.use_semantic_chunking else chunk_text
-        chunks = chunker(text, chunk_size=self.chunk_size, overlap=self.overlap)
-        if not chunks:
-            raise ValueError("Document contains no extractable chunks")
+        document = load_document_details(file_path)
+        text = document.text
         if self.embedding_model is None:
             self.embedding_model = EmbeddingModel()
+        metadata = []
+        if self.token_aware_chunking:
+            limit = min(self.embedding_token_limit or self.embedding_model.model.max_seq_length,
+                        self.embedding_model.model.max_seq_length)
+            metadata = token_chunk_text(
+                text, self.embedding_model.model.tokenizer, max_tokens=limit,
+                overlap_tokens=self.token_overlap,
+                sentence_boundaries=self.use_semantic_chunking,
+            )
+            chunks = [chunk.text for chunk in metadata]
+        else:
+            chunker = semantic_chunk_text if self.use_semantic_chunking else chunk_text
+            chunks = chunker(text, chunk_size=self.chunk_size, overlap=self.overlap)
+        if not chunks:
+            raise ValueError("Document contains no extractable chunks")
         embeddings = self.embedding_model.encode(chunks)
         store = VectorStore(dimension=embeddings.shape[1])
         store.add(embeddings, chunks)
         retriever = Retriever(self.embedding_model, store)
+        self.chunk_metadata = metadata
+        self.document_text = text
+        self.document_pages = document.pages
+        self.extraction_diagnostics = document.diagnostics
+        self.document_path = str(file_path)
         self.vector_store = store
         self.retriever = retriever
 
     def ask(self, question: str) -> dict:
-        """Extract from each hit and select by retrieval similarity only."""
+        """Original four-field response. Use ask_detailed for evidence and uncertainty."""
+        detailed = self.ask_detailed(question)
+        return {key: detailed[key] for key in
+                ("question", "answer", "source", "retrieval_score")}
+
+    def ask_detailed(self, question: str) -> dict:
+        """Evaluate all retrieved evidence; expose source coordinates and ranking.
+
+        `candidate` explicitly means unverified extractive output, not calibrated
+        confidence. SQuAD-v1 cannot certify semantic absence of an answer.
+        """
         if not isinstance(question, str) or not question.strip():
             raise ValueError("Question must be a non-empty string")
         if self.retriever is None:
             raise RuntimeError("Load a document before asking questions")
-        results = self.retriever.retrieve(question, top_k=self.top_k)
-        response = {
-            "question": question,
-            "answer": "",
-            "source": "",
-            "retrieval_score": 0.0,
-        }
-        if not results:
+        hits = self.retriever.retrieve(question, top_k=self.top_k)
+        response = dict(question=question, answer="", source="", retrieval_score=0.0,
+                        status="no_evidence", candidates=[], selection=self.answer_selection,
+                        no_answer_supported=False, document_path=self.document_path,
+                        extraction_diagnostics=list(self.extraction_diagnostics))
+        if not hits:
             return response
         if self.qa_model is None:
             self.qa_model = QAModel()
-        best_score = float("-inf")
-        for result in results:
-            answer = self.qa_model.answer(question, result["chunk"])
-            score = float(result["score"])
-            if answer and answer.strip() and score > best_score:
-                best_score = score
-                response.update(
-                    answer=answer.strip(),
-                    source=result["chunk"],
-                    retrieval_score=score,
-                )
+        response['no_answer_supported'] = bool(getattr(self.qa_model, 'supports_no_answer', False))
+        candidates = []
+        seen_contexts = set()
+        for rank, hit in enumerate(hits,1):
+            index = hit.get("index",rank-1)
+            for chunk, source_offset in self._evidence_contexts(hit):
+                context_key = (source_offset,chunk)
+                if not chunk.strip() or context_key in seen_contexts:
+                    continue
+                seen_contexts.add(context_key)
+                if callable(getattr(self.qa_model, "candidates", None)):
+                    extracted = self.qa_model.candidates(question,chunk,top_n=1)
+                else:
+                    answer = self.qa_model.answer(question,chunk).strip()
+                    a = chunk.find(answer) if answer else -1
+                    extracted = [dict(answer=answer,start=a,end=a+len(answer),log_score=None)] if a>=0 else []
+                for span in extracted:
+                    a,b = span['start'],span['end']
+                    candidates.append(dict(span,source=chunk,chunk_index=index,retrieval_rank=rank,
+                        retrieval_score=float(hit['score']),
+                        document_start=source_offset+a if source_offset is not None else None,
+                        document_end=source_offset+b if source_offset is not None else None))
+        ranked = rank_candidates(candidates,self.answer_selection)
+        response['candidates'] = ranked
+        if not ranked:
+            response['status'] = 'no_answer' if response['no_answer_supported'] else 'no_admissible_span'
+            return response
+        for candidate in ranked:
+            a,b = candidate['document_start'],candidate['document_end']
+            candidate['pages'] = [p.number for p in self.document_pages
+                                  if p.number is not None and a is not None and p.start < b and p.end > a]
+        selected = ranked[0]
+        response.update(answer=selected['answer'],source=selected['source'],
+                        retrieval_score=selected['retrieval_score'],status='candidate',
+                        document_start=selected['document_start'],document_end=selected['document_end'],
+                        pages=selected['pages'])
         return response
+
+    def _evidence_contexts(self, hit):
+        """Search small chunks; read their original pages/paragraphs independently.
+
+        Splitting PDF evidence by page avoids mixing adjacent slides into an
+        unrelated QA context and keeps source offsets and page attribution exact.
+        """
+        index=hit.get('index',-1)
+        metadata=self.chunk_metadata[index] if 0<=index<len(self.chunk_metadata) else None
+        if not self.context_expansion or metadata is None:
+            return [(hit['chunk'],metadata.start if metadata else None)]
+        pages=[p for p in self.document_pages if p.number is not None and
+               p.start<metadata.end and p.end>metadata.start]
+        if pages:
+            return [(self.document_text[p.start:p.end],p.start) for p in pages]
+        left=self.document_text.rfind('\n\n',0,metadata.start)
+        left=left+2 if left>=0 else 0
+        right=self.document_text.find('\n\n',metadata.end)
+        right=right if right>=0 else len(self.document_text)
+        left=max(left,metadata.start-2000)
+        right=min(right,metadata.end+2000)
+        return [(self.document_text[left:right],left)]

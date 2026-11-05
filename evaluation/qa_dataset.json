@@ -1,0 +1,27 @@
+[
+  {
+    "question": "What does Word2Vec learn?",
+    "context": "Word2Vec is a neural network technique that learns word embeddings.",
+    "answer": "word embeddings"
+  },
+  {
+    "question": "What is the goal of learning word vectors?",
+    "context": "The goal of learning word vectors is to adjust those word vectors to maximize the similarity of positive word pairs and minimize the similarity of negative word pairs.",
+    "answer": "to adjust those word vectors to maximize the similarity of positive word pairs and minimize the similarity of negative word pairs"
+  },
+  {
+    "question": "What is the capital of France?",
+    "context": "The capital of France is Paris. It is a major European city.",
+    "answer": "Paris"
+  },
+  {
+    "question": "What does NLP stand for?",
+    "context": "NLP stands for Natural Language Processing. It is a field of artificial intelligence.",
+    "answer": "Natural Language Processing"
+  },
+  {
+    "question": "Who developed the Transformer architecture?",
+    "context": "The Transformer architecture was introduced by researchers at Google in 2017.",
+    "answer": "researchers at Google"
+  }
+]

@@ -1,74 +1,100 @@
-# Document Question Answering System (RAG + NLP)
+# Document QA — локальное приложение
 
-An NLP project for document processing and question answering.
+Загрузите PDF, DOCX или TXT, задайте вопрос и получите **фрагмент исходного документа** с именем файла, страницей и окружающим абзацем. Приложение работает на Streamlit, выполняет поиск через embeddings + FAISS и использует только extractive QA. Генеративных LLM и внешних inference API нет.
 
-The project aims to build a Retrieval-Augmented Generation (RAG)
-pipeline using semantic search and transformer-based extractive
-question answering.
+## Запуск на этом компьютере
 
-## Current Features
+Зависимости установлены, QA-модель скачана, embedding-модель доступна локально. Из корня проекта:
 
-- PDF document loading
-- DOCX document loading
-- TXT document loading
-- File validation and error handling
-- Automated testing with Pytest
+```bash
+./run_app.sh
+```
 
-## Planned Features
+Откройте **http://127.0.0.1:8501**. Если сервер уже запущен, достаточно открыть эту ссылку.
 
-- Text chunking
-- Sentence Transformers embeddings
-- FAISS vector search
-- BERT-based extractive question answering
-- REST API integration
-- Audio input support
+Эквивалентная команда:
 
-## Tech Stack
+```bash
+.venv/bin/streamlit run app.py
+```
 
-- Python
-- pypdf
-- python-docx
-- Pytest
+Для другого порта: `./run_app.sh --server.port 8502`. Остановка — `Ctrl+C` в терминале сервера. Скрипт запуска включает offline mode; приложение также устанавливает offline flags само. По умолчанию сервер доступен только на этом компьютере, telemetry Streamlit отключена.
 
-Planned:
-- Hugging Face Transformers
-- Sentence Transformers
-- FAISS
-- Django REST Framework
+## Установка с нуля
 
-## Installation
+Проверенное окружение: Python **3.14.7**, macOS ARM64. На другой платформе нужны совместимые wheels PyTorch/FAISS.
 
-Clone the repository:
+```bash
+python3.14 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python scripts/setup_models.py
+./run_app.sh
+```
 
-git clone https://github.com/YOUR_USERNAME/document-qa-rag.git
+Только установка пакетов и первоначальная загрузка моделей требуют интернета. `setup_models.py` скачивает **один QA checkpoint** и embedding-модель в ignored `models/`; это около 1,6 ГБ весов суммарно. Подготовьте несколько гигабайт диска для загрузки и достаточную оперативную память; inference выполняется на CPU. Никаких credentials для публичных моделей не требуется. Не запускайте setup повторно для обычного использования: после подготовки приложение работает offline. При прерванной загрузке повторите setup.
 
-Create a virtual environment:
+`requirements.txt` закрепляет прямые зависимости, `requirements-lock.txt` — фактическое установленное окружение. Streamlit 1.66.1 и sentencepiece 0.2.2 добавлены к существующему `.venv`; PyTorch/Transformers не заменялись.
 
-python3 -m venv .venv
+## Как пользоваться
 
-Activate it:
+1. В левой панели выберите один или несколько PDF/DOCX/TXT и нажмите **«Обработать файлы»**.
+2. Выберите нужный документ в списке.
+3. Введите вопрос и нажмите **«Найти ответ»**. Первая загрузка моделей может занять больше времени.
+4. Прочитайте ответ, имя источника, номер страницы PDF и подтверждающий фрагмент.
+5. Задайте следующий вопрос или переключите документ. История хранится отдельно для каждого файла.
+6. **«Сбросить сессию»** удаляет загруженные временные файлы, индексы и историю текущей сессии. Общие read-only модели остаются в памяти для быстрого повторного использования.
 
-source .venv/bin/activate
+Можно держать до 8 документов, до 25 МБ каждый. TXT должен быть в UTF-8. PDF должен содержать извлекаемый текст; для сканов сначала нужен OCR. DOCX извлекается из основных абзацев; таблицы, headers и footers отдельно не читаются. Для TXT/DOCX номер страницы не придумывается — интерфейс сообщает, что его нет.
 
-Install dependencies:
+Документы не отправляются в облако. Они временно хранятся в отдельном каталоге сессии; постоянная библиотека документов и авторизация не входят в приложение. Это локальный учебный проект, не сервер для публичного размещения. При перезапуске процесса загруженные документы нужно добавить заново.
 
-pip install -r requirements.txt
+## Какая модель используется
 
-## Testing
+В приложении — **[deepset/xlm-roberta-base-squad2](https://huggingface.co/deepset/xlm-roberta-base-squad2)**, `XLMRobertaForQuestionAnswering`, около 0,3B параметров. Это multilingual XLM-R, fine-tuned для **extractive QA на SQuAD 2.0**, а не text-generation model. QA revision закреплён: `a5fab9908c8d856e8c583fd41ba6d92444e46477`. Attribution: deepset, лицензия checkpoint **CC BY 4.0**; model card сохранена вместе с локальными assets.
 
-Run:
+Модель поддерживает CLS/null answer. Каждый QA window сравнивает допустимый span с собственным CLS score; если non-null span не побеждает, окно отказывается. Если все найденные evidence contexts отказались, приложение сообщает: **«Надёжный ответ не найден»**. Порог не подбирался по новым benchmark данным, проценты уверенности не выдумываются.
 
-pytest -v
+Мультиязычная основа позволяет задавать EN/RU/KK вопросы, но QA fine-tuning проводился на английском SQuAD 2.0. Равное качество русского и казахского **не гарантируется**. Любой непустой ответ показан как **извлечённый кандидат**, который нужно сверить с источником; null detection тоже может ошибаться.
 
-Current test coverage includes document loading,
-file validation, and error handling.
+Прежний BERT в `models/final_qa_model/` и training notebook не изменены. `QAModel` сохранён для совместимости старых scripts/tests, а пользовательское приложение явно использует `ExtractiveQAModel`. Исторические EM/F1 из `reports/` относятся к предыдущим экспериментам и не объявляются метриками новой модели. Переобучения не выполнялось.
 
-Latest local test result: 10 passed.
+## Что происходит внутри
 
-## Project Status
+Upload → исходный текст и page metadata → tokenizer-aware chunks → normalized multilingual MiniLM embeddings → FAISS cosine search → исходные страницы/абзацы найденных chunks → extractive XLM-R → ответ по character offsets → проверка source coordinates → интерфейс.
 
-Work in progress.
+Индексируются короткие chunks с лимитом 96 tokens, включая special tokens, overlap target 24. Embedding-модель `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` имеет effective limit 128; silent truncation запрещена. Для QA приложение читает исходные страницы PDF по отдельности либо окружающий абзац TXT/DOCX, сохраняя offsets. Так соседние слайды не смешиваются в один QA input. Длинные inputs проходят через overlapping QA windows 256/128. Answer cap приложения — 64 wordpieces.
 
-Currently implemented: Document Loader.
+Выбор среди допустимых кандидатов — по retrieval similarity; нет length bonus и заявления, что score является вероятностью истины. Word-boundary constraints не позволяют показывать искусственный `##` или случайный корень слова. Результаты не генерируются и не переводятся автоматически.
 
-Next milestone: Text Chunking and Embeddings.
+Код: `app.py` — UI, `document_app/service.py` — изолированные сессии, `rag/` — существующий RAG backend, `scripts/setup_models.py` — одноразовая подготовка, `run_app.sh` — запуск.
+
+## Проверка готовности
+
+Полный suite: **139 passed, 0 failed**, offline; `pip check` — без конфликтов.
+
+```bash
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 .venv/bin/python -m pytest -q -p no:cacheprovider
+.venv/bin/python -m pip check
+```
+
+Минимальный приёмочный smoke через настоящие upload widgets Streamlit и реальные локальные модели:
+
+```bash
+.venv/bin/python scripts/smoke_app.py
+```
+
+Он требует исходный реальный `uploads/embedding.pdf` и проверяет PDF → вопрос → источник/страница, отсутствие ответа, второй TXT, переключение, DOCX, повторные вопросы и reset. В выполненном запуске:
+
+- PDF: `logistic regression`, `embedding.pdf`, **стр. 7**, ответ подтверждён точным source slice.
+- Вопрос о пароле почты: пустой answer, native `no_answer`, понятный отказ в UI.
+- TXT: `Aurora`; DOCX: `Meridian`, правильные имена источников.
+- Переключение документов, история и сброс сессии прошли; Streamlit exceptions — 0.
+- Живой сервер на localhost запущен; `/_stcore/health` вернул `ok`.
+
+Это acceptance smoke, не исследование качества и не обещание правильных ответов на все вопросы. Browser automation host был недоступен; проверка upload/form/selection выполнена Streamlit AppTest, а не визуальным браузерным прогоном. Краткий протокол: [APPLICATION_DELIVERY.md](reports/APPLICATION_DELIVERY.md). Подробный локальный результат: ignored `reports/local_results/application_smoke.json`.
+
+## Известные ограничения
+
+Сложные вопросы, повреждённые PDF-формулы, склеенные слова, противоречащие passages и языки вне основного QA training могут приводить к ошибке или ложному отказу. No-answer механизм не даёт абсолютной гарантии; именно поэтому ответы помечены как кандидаты. Слишком длинный вопрос отклоняется явно — сократите его. Не запускайте параллельно несколько тяжёлых копий модели без необходимости.
+
+Веса, caches, `.venv`, загрузки и большие raw runs не входят в Git. Исторические исходники `evaluation/` и аудита в `experiments/` сохранены в Git; сгенерированные результаты аудита остаются локальными и игнорируются. История разработки не переписана; готовое приложение находится в ветке `feat/final-document-qa`.

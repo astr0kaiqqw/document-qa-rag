@@ -88,3 +88,35 @@ def test_corrupt_docx_propagates(tmp_path: Path) -> None:
     path.write_bytes(b"Not a DOCX archive")
     with pytest.raises(BadZipFile):
         load_document(str(path))
+
+
+def test_pdf_normalization_does_not_invent_word_spaces():
+    from rag.document_loader import normalize_pdf_text
+    text = 'co\u00adoperate\x00\r\n\r\nE=mc²; AB-123/X; asfeaturesin; maygeneralizebetter'
+    assert normalize_pdf_text(text) == 'cooperate\n\nE=mc²; AB-123/X; asfeaturesin; maygeneralizebetter'
+
+
+def test_pdf_page_metadata_and_missing_text_warning(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    import rag.document_loader as loader
+    path = tmp_path / 'pages.pdf';path.write_bytes(b'fixture')
+    raw = ['  First\u00ad page.  ', '', 'Formula \ue000 and text.']
+    monkeypatch.setattr(loader,'PdfReader',lambda _:SimpleNamespace(pages=[SimpleNamespace(extract_text=lambda s=s:s) for s in raw]))
+    with pytest.warns(loader.ExtractionWarning,match='no extractable text'):
+        document=loader.load_document_details(str(path))
+    assert document.text == 'First page.\n\nFormula \ue000 and text.'
+    assert document.pages[0].raw_text == raw[0]
+    assert document.pages[1].start==document.pages[1].end
+    third=document.pages[2]
+    assert third.number==3
+    assert document.text[third.start:third.end]=='Formula \ue000 and text.'
+    assert len(document.diagnostics)==3
+
+
+def test_details_keep_txt_whitespace_and_raw_text(tmp_path):
+    from rag.document_loader import load_document_details
+    path=tmp_path/'source.txt';path.write_text('  A  word.\n\nБір сөз.  ',encoding='utf-8')
+    doc=load_document_details(str(path))
+    assert doc.text=='A  word.\n\nБір сөз.'
+    assert doc.pages[0].raw_text.startswith('  ')
+    assert doc.pages[0].number is None

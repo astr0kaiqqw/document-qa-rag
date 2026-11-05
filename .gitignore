@@ -8,3 +8,34 @@ uploads/*
 
 # Locally trained QA model
 /models/
+
+# Reproducible quality runs keep full predictions local
+/reports/local_results/
+
+# Local model assets and generated retrieval indexes, wherever created
+*.safetensors
+*.ckpt
+*.pt
+*.pth
+*.onnx
+*.bin
+*.faiss
+/.cache/
+/.hf_cache/
+/hf_cache/
+/indexes/
+/session_data/
+/tmp/
+
+# Local credentials; templates may be versioned
+.env
+.env.*
+!.env.example
+.aws/
+.streamlit/secrets.toml
+
+# Keep audit source/report, not generated text, datasets, logs or predictions
+/experiments/rag_quality_audit/*
+!/experiments/rag_quality_audit/*.py
+!/experiments/rag_quality_audit/README.md
+!/experiments/rag_quality_audit/RAG_QUALITY_DIAGNOSTIC_REPORT.md

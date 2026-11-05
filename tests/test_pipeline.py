@@ -15,7 +15,11 @@ def pipeline(monkeypatch):
     embeddings.encode.side_effect = lambda texts: np.tile(
         np.array([[1.0, 0.0, 0.0]], dtype=np.float32), (len(texts), 1)
     )
-    qa = Mock()
+    from transformers import AutoTokenizer
+    from rag.embeddings import MODEL_NAME
+    embeddings.model.max_seq_length = 128
+    embeddings.model.tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, local_files_only=True)
+    qa = Mock(spec=["answer"])
     qa.answer.return_value = "Python"
     monkeypatch.setattr(pipeline_module, "EmbeddingModel", Mock(return_value=embeddings))
     monkeypatch.setattr(pipeline_module, "QAModel", Mock(return_value=qa))
@@ -86,7 +90,7 @@ def test_empty_retrieval(pipeline, document):
 @pytest.mark.parametrize("answer", ["", "   "])
 def test_empty_qa_answer(pipeline, document, answer):
     pipeline.load_document(document)
-    pipeline.qa_model = Mock()
+    pipeline.qa_model = Mock(spec=["answer"])
     pipeline.qa_model.answer.return_value = answer
     assert pipeline.ask("Question?") == {
         "question": "Question?", "answer": "", "source": "", "retrieval_score": 0.0
@@ -99,15 +103,15 @@ def test_answer_ranking_and_all_chunks_processed(pipeline, document):
     pipeline.retriever = Mock()
     pipeline.retriever.retrieve.return_value = [
         {"chunk": "empty", "score": 0.9},
-        {"chunk": "lower", "score": -0.5},
-        {"chunk": "best", "score": -0.1},
-        {"chunk": "last", "score": -0.8},
+        {"chunk": "lower answer", "score": -0.5},
+        {"chunk": "best answer", "score": -0.1},
+        {"chunk": "last answer", "score": -0.8},
     ]
-    pipeline.qa_model = Mock()
+    pipeline.qa_model = Mock(spec=["answer"])
     pipeline.qa_model.answer.side_effect = ["", "lower answer", " best answer ", "last answer"]
     result = pipeline.ask("Question?")
     assert result["answer"] == "best answer"
-    assert result["source"] == "best"
+    assert result["source"] == "best answer"
     assert result["retrieval_score"] == -0.1
     assert pipeline.qa_model.answer.call_count == 4
     pipeline.retriever.retrieve.assert_called_once_with("Question?", top_k=4)
@@ -120,6 +124,7 @@ def test_switch_chunkers(pipeline, document, monkeypatch, semantic):
     monkeypatch.setattr(pipeline_module, "semantic_chunk_text", semantic_chunker)
     monkeypatch.setattr(pipeline_module, "chunk_text", legacy_chunker)
     assert pipeline.use_semantic_chunking is True
+    pipeline.token_aware_chunking = False
     pipeline.use_semantic_chunking = semantic
     pipeline.load_document(document)
     selected, unused = (semantic_chunker, legacy_chunker) if semantic else (legacy_chunker, semantic_chunker)
@@ -147,6 +152,7 @@ def test_failed_reload_preserves_document(pipeline, document, tmp_path):
 
 
 def test_no_chunks(pipeline, document, monkeypatch):
+    pipeline.token_aware_chunking = False
     monkeypatch.setattr(pipeline_module, "semantic_chunk_text", Mock(return_value=[]))
     with pytest.raises(ValueError, match="no extractable chunks"):
         pipeline.load_document(document)
@@ -158,3 +164,38 @@ def test_no_chunks(pipeline, document, monkeypatch):
 def test_invalid_configuration(kwargs):
     with pytest.raises(ValueError):
         RAGPipeline(**kwargs)
+
+
+def test_token_index_preserves_document_coordinates(pipeline, tmp_path):
+    path = tmp_path / 'multilingual.txt'
+    text = 'English sentence.\n\nҚазақстан — мемлекет. Русский текст. ' * 70
+    path.write_text(text,encoding='utf-8')
+    pipeline.load_document(str(path))
+    assert pipeline.embedding_token_limit == 96
+    assert pipeline.document_text == text.strip()
+    for chunk in pipeline.chunk_metadata:
+        assert chunk.text == pipeline.document_text[chunk.start:chunk.end]
+        assert chunk.token_count <= 96
+
+
+def test_detailed_answer_traces_source_without_claiming_confidence(pipeline, document):
+    pipeline.load_document(document)
+    result = pipeline.ask_detailed('What is a programming language?')
+    assert result['status'] == 'candidate'
+    assert result['no_answer_supported'] is False
+    assert pipeline.document_text[result['document_start']:result['document_end']] == result['answer']
+    assert result['document_path'] == document
+    assert result['candidates'][0]['retrieval_rank'] == 1
+
+
+def test_pdf_evidence_expands_to_separate_original_pages():
+    from rag.chunker import TextChunk
+    from rag.document_loader import SourcePage
+    pipe=RAGPipeline(context_expansion=True)
+    first='The classifier is logistic regression.'
+    second='Another slide about vectors.'
+    pipe.document_text=first+'\n\n'+second
+    pipe.document_pages=(SourcePage(1,0,len(first),first),SourcePage(2,len(first)+2,len(pipe.document_text),second))
+    pipe.chunk_metadata=[TextChunk(pipe.document_text[10:],10,len(pipe.document_text),20)]
+    contexts=pipe._evidence_contexts(dict(index=0,chunk=pipe.chunk_metadata[0].text))
+    assert contexts==[(first,0),(second,len(first)+2)]
