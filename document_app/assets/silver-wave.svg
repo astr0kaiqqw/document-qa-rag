@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" fill="none">
+<!-- Original Document QA vector artwork. No external images, fonts or filters. -->
+<defs>
+ <linearGradient id="metal" x1="320" y1="100" x2="980" y2="830" gradientUnits="userSpaceOnUse">
+  <stop stop-color="#24282f"/><stop offset=".18" stop-color="#a4acb5"/>
+  <stop offset=".25" stop-color="#e4e7e9"/><stop offset=".32" stop-color="#424953"/>
+  <stop offset=".43" stop-color="#15191f"/><stop offset=".52" stop-color="#9ca5af"/>
+  <stop offset=".57" stop-color="#e9edef"/><stop offset=".64" stop-color="#4a525d"/>
+  <stop offset=".78" stop-color="#15191f"/><stop offset=".9" stop-color="#929ba6"/><stop offset="1" stop-color="#303740"/>
+ </linearGradient>
+ <linearGradient id="edge"><stop stop-color="#e1e6e9" stop-opacity="0"/><stop offset=".5" stop-color="#e1e6e9" stop-opacity=".8"/><stop offset="1" stop-color="#707c88" stop-opacity=".1"/></linearGradient>
+ <linearGradient id="fade" x1="0" x2="1"><stop stop-color="white" stop-opacity="0"/><stop offset=".4" stop-color="white"/><stop offset=".85" stop-color="white"/><stop offset="1" stop-color="white" stop-opacity="0"/></linearGradient>
+ <pattern id="dots" width="9" height="9" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r=".85" fill="#bac1c9" opacity=".45"/></pattern>
+ <mask id="dissolve"><rect width="1200" height="900" fill="url(#fade)"/></mask>
+</defs>
+<g mask="url(#dissolve)">
+ <path d="M1200 45C935-58 695 34 689 201C681 388 1099 246 1044 480C999 672 528 466 451 675C409 790 609 910 899 929" stroke="url(#metal)" stroke-width="100"/>
+ <path d="M1200 5C930-88 650 33 650 211C650 420 1138 263 1080 490C1023 708 546 502 490 686C458 793 631 878 921 888" stroke="url(#edge)" stroke-width="2"/>
+ <path d="M1200 77C964-16 731 59 726 201C720 354 1055 233 1009 471C972 629 510 441 414 664" stroke="#c0c8d0" stroke-opacity=".2" stroke-width="1"/>
+ <path d="M1196 60C946-31 711 47 706 201C702 371 1073 241 1026 479C982 650 518 451 431 670C393 769 570 871 822 908" stroke="url(#dots)" stroke-width="111" opacity=".7"/>
+ <path d="M410 661C319 614 207 649 128 781M424 688C329 655 229 696 154 821M454 720C359 690 287 728 227 852" stroke="url(#dots)" stroke-width="32"/>
+ <g fill="#9da8b1" opacity=".17" font-family="monospace" font-size="10" letter-spacing="5">
+  <text x="265" y="605">· : : + + : · · : + : : ·</text>
+  <text x="250" y="621">: · + : : : + · · : + · :</text>
+  <text x="240" y="637">· + : : · + + : · : : · ·</text>
+ </g>
+</g>
+</svg>

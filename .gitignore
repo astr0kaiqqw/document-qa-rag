@@ -39,3 +39,9 @@ uploads/*
 !/experiments/rag_quality_audit/*.py
 !/experiments/rag_quality_audit/README.md
 !/experiments/rag_quality_audit/RAG_QUALITY_DIAGNOSTIC_REPORT.md
+
+# Private document diagnostics and generated acceptance data (local only)
+/reports/email_diagnostic/
+/reports/multimodal_update/
+/reports/ocr_voice_update.md
+/reports/timetable_fix.md

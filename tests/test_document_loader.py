@@ -100,6 +100,7 @@ def test_pdf_page_metadata_and_missing_text_warning(tmp_path, monkeypatch):
     from types import SimpleNamespace
     import rag.document_loader as loader
     path = tmp_path / 'pages.pdf';path.write_bytes(b'fixture')
+    monkeypatch.setattr(loader,'pdf_page_text',lambda *args:'')
     raw = ['  First\u00ad page.  ', '', 'Formula \ue000 and text.']
     monkeypatch.setattr(loader,'PdfReader',lambda _:SimpleNamespace(pages=[SimpleNamespace(extract_text=lambda s=s:s) for s in raw]))
     with pytest.warns(loader.ExtractionWarning,match='no extractable text'):
@@ -110,7 +111,7 @@ def test_pdf_page_metadata_and_missing_text_warning(tmp_path, monkeypatch):
     third=document.pages[2]
     assert third.number==3
     assert document.text[third.start:third.end]=='Formula \ue000 and text.'
-    assert len(document.diagnostics)==3
+    assert len(document.diagnostics)==4
 
 
 def test_details_keep_txt_whitespace_and_raw_text(tmp_path):
