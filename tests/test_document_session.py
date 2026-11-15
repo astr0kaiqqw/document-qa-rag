@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from docx import Document
 from transformers import AutoTokenizer
-from document_app.service import DocumentSession, friendly_error
+from document_app.service import DocumentSession, friendly_error, PROCESSING_VERSION
 from rag.embeddings import MODEL_NAME
 
 
@@ -69,3 +69,30 @@ def test_close_deletes_only_session_files(session):
     assert directory.exists()
     session.close()
     assert not directory.exists() and not session.documents
+
+
+def test_question_workspace_with_uploaded_document(session):
+    from streamlit.testing.v1 import AppTest
+    root=Path(__file__).resolve().parents[1]
+    record=session.add_upload('station.txt',b'The station is named Aurora.')
+    at=AppTest.from_file(str(root/'app.py'),default_timeout=120)
+    at.session_state['documents']=session
+    at.session_state['selected_document']=record.key
+    at.run()
+    assert not at.exception
+    assert next(b for b in at.button if b.label=='Распознать запись').disabled
+    at.text_input[0].set_value('Which name?')
+    next(b for b in at.button if b.label=='Найти ответ').click().run()
+    assert not at.exception
+    assert record.history[-1]['answer']=='Aurora'
+    assert any('Источник: station.txt' in item.value for item in at.text)
+
+
+def test_reprocess_upload_after_extraction_upgrade(session):
+    old=session.add_upload('station.txt',b'The station is named Aurora.')
+    old.pipeline.processing_version=1
+    new=session.add_upload('station.txt',b'The station is named Aurora.')
+    assert new is not old
+    assert new.key==old.key and len(session.documents)==1
+    assert new.pipeline.processing_version==PROCESSING_VERSION
+    assert session.ask(new.key,'Which name?')['answer']=='Aurora'
