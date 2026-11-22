@@ -24,11 +24,11 @@ def test_empty_app_upload_error_and_reset():
 
 
 def test_transcribed_question_is_submitted_without_typing(monkeypatch):
-    transcript = 'Какие у меня уроки в понедельник?'
+    transcript = 'Дүйсенбі күні қандай сабақтар бар?'
     submitted = []
 
     def transcribe(self, data, language):
-        assert language == 'ru'
+        assert language == 'kk'
         return transcript
 
     monkeypatch.setattr(LocalSpeech, 'transcribe', transcribe)
@@ -40,7 +40,7 @@ def test_transcribed_question_is_submitted_without_typing(monkeypatch):
     at.file_uploader[0].set_value([('schedule.txt', b'Cybersecurity on Monday.', 'text/plain')]).run()
     next(b for b in at.button if b.label == 'Обработать файлы').click().run()
     old_widget = at.text_input[0].id
-    next(menu for menu in at.selectbox if menu.label == 'Язык записи').select('Русский').run()
+    next(menu for menu in at.selectbox if menu.label == 'Язык записи').select('Қазақша').run()
     at.audio_input[0].set_value(('question.wav', b'RIFF', 'audio/wav')).run()
     next(b for b in at.button if b.label == 'Распознать запись').click().run()
 
@@ -64,11 +64,11 @@ def test_transcribed_question_is_submitted_without_typing(monkeypatch):
 
     class ReloadedSpeech(LocalSpeech):
         def transcribe(self, data, language):
-            assert language == 'ru'
-            return 'В какой аудитории занятие?'
+            assert language == 'kk'
+            return 'Сабақ қай аудиторияда өтеді?'
 
     monkeypatch.setattr(speech, 'LocalSpeech', ReloadedSpeech)
     next(b for b in at.button if b.label == 'Распознать запись').click().run()
-    assert at.text_input[0].value == 'В какой аудитории занятие?'
+    assert at.text_input[0].value == 'Сабақ қай аудиторияда өтеді?'
     assert not at.error
     assert not at.exception

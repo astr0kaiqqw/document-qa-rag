@@ -22,8 +22,8 @@ class LocalSpeech:
     def transcribe(self, data, language=None):
         if not data or len(data) > MAX_AUDIO_BYTES:
             raise SpeechError('Пустая или слишком большая запись. Запишите вопрос до 60 секунд.')
-        if language not in (None, 'ru', 'en'):
-            raise SpeechError('Выберите русский, английский или автоматическое определение языка.')
+        if language not in (None, 'ru', 'en', 'kk'):
+            raise SpeechError('Выберите русский, казахский, английский или автоматическое определение языка.')
         try:
             with wave.open(BytesIO(data)) as audio:
                 duration = audio.getnframes() / audio.getframerate()

@@ -40,10 +40,14 @@ def test_audio_limits(data,tmp_path):
     with pytest.raises(SpeechError):LocalSpeech(tmp_path).transcribe(data)
 
 
-def test_voice_result_and_silence(tmp_path):
+@pytest.mark.parametrize('language', ['ru', 'kk'])
+def test_voice_result_and_silence(tmp_path, language):
     speech=LocalSpeech(tmp_path)
-    speech.model=SimpleNamespace(transcribe=lambda *a,**k:([SimpleNamespace(text=' В каком кабинете? ')],None))
-    assert speech.transcribe(wav(),'ru')=='В каком кабинете?'
+    def transcribe(audio, **options):
+        assert options['language'] == language
+        return [SimpleNamespace(text=' В каком кабинете? ')], None
+    speech.model=SimpleNamespace(transcribe=transcribe)
+    assert speech.transcribe(wav(),language)=='В каком кабинете?'
     speech.model=SimpleNamespace(transcribe=lambda *a,**k:([],None))
     with pytest.raises(SpeechError,match='Речь не обнаружена'):speech.transcribe(wav())
 

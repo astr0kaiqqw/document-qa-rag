@@ -12,24 +12,30 @@ DAYS = {'пн':'Понедельник', 'вт':'Вторник', 'ср':'Сре
 DAYS.update(zip(('mon','tue','wed','thu','fri','sat','sun'), tuple(DAYS.values())))
 DAY_STEMS = {'понедельник':'Понедельник', 'вторник':'Вторник', 'сред':'Среда',
              'четверг':'Четверг', 'пятниц':'Пятница', 'суббот':'Суббота', 'воскресен':'Воскресенье'}
+KAZAKH_DAYS = dict(zip(
+    ('дүйсенбі','сейсенбі','сәрсенбі','бейсенбі','жұма','сенбі','жексенбі'),
+    DAY_STEMS.values(),
+))
+DAY_STEMS.update(KAZAKH_DAYS)
 TIME = re.compile(r'(?<!\d)([0-2]?\d:[0-5]\d)\s*[-–—]\s*([0-2]?\d:[0-5]\d)(?!\d)')
 PREFIX = 'Расписание | '
 DETAIL_QUESTION = re.compile(
     r'\b(?:в\s+како[йм]\s+(?:кабинете?|аудитории|аудиторию)|где\s+проходит|'
-    r'кто\s+(?:(?:его|её|их|это)\s+)?вед[её]т|какой\s+преподаватель)'
-    r'\b',
+    r'кто\s+(?:(?:его|её|их|это)\s+)?вед[её]т|какой\s+преподаватель|'
+    r'қай\s+(?:кабинетте|аудиторияда)|кім\s+(?:жүргізеді|береді)|оқытушысы\s+кім)\b',
     re.I,
 )
 
 
 def is_time_question(question):
-    return bool(re.search(r'во\s+сколько|когда|время|what\s+time|when', question, re.I))
+    return bool(re.search(r'во\s+сколько|когда|время|what\s+time|when|сағат\s+нешеде|қай\s+уақытта', question, re.I))
 
 
 def is_day_list_question(question):
     words = _words(question)
     return bool(_question_days(words) and re.search(
-        r'(?:\bкакие\b.*\b(?:уроки|пары|занятия|предметы)\b)', question, re.I))
+        r'(?:\bкакие\b.*\b(?:уроки|пары|занятия|предметы)\b|'
+        r'\b(?:қандай|қай)\b.*\bсабақ\w*)', question, re.I))
 
 
 def is_timetable_question(question):
@@ -119,8 +125,8 @@ def time_answer(question, text):
     days = _question_days(words)
     stop={'во','сколько','когда','время','у','меня','в','на','по','будет','будут','начинается',
           'начинаются','занятие','занятия','пара','пары','урок','уроки','the','what','time','when','is','my',
-          'on','и','его','ее',
-          'этот','эта','это'}
+          'on','күні','менің','менде','сабақ','сабағы','сағат','нешеде','қай','уақытта','и','его','ее',
+          'этот','эта','это','өтеді','және'}
     subject=[w for w in words if w not in stop and w not in DAYS and
              not any(w.startswith(stem) for stem in DAY_STEMS)]
     if not list_day and not details and not subject:
@@ -141,6 +147,7 @@ def time_answer(question, text):
         course_words=_words(body[:time.start()])
         if not list_day and not all(
             any(_stem(candidate) == _stem(word) for candidate in course_words)
+            or (word == 'киберқауіпсіздік' and {'кибер', 'қауіпсіздігі'} <= set(course_words))
             for word in subject
         ):
             continue
@@ -160,7 +167,9 @@ def format_records(records, question):
             groups[-1] = label, groups[-1][1], end
         else:
             groups.append((label, start, end))
+    kazakh = bool(re.search('[әғқңөұүһі]', question, re.I))
+    days = {day: name.capitalize() for name, day in KAZAKH_DAYS.items()} if kazakh else {}
     return '\n\n'.join(
-        f'{day} · {before}{start}–{end}{after}'
+        f'{days.get(day, day)} · {before}{start}–{end}{after}'
         for (day, before, after), start, end in groups
     )

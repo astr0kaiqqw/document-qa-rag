@@ -143,7 +143,7 @@ st.caption('02 / ВОПРОС К ВЫБРАННОМУ ИСТОЧНИКУ')
 question_column, microphone_column=st.columns([3,2])
 with microphone_column, st.expander('Микрофон · локальное распознавание', expanded=True):
     st.caption('Начните и остановите запись кнопкой микрофона · до 60 секунд. Текст можно исправить перед отправкой.')
-    speech_languages={'Автоматически':None,'Русский':'ru','English':'en'}
+    speech_languages={'Автоматически':None,'Русский':'ru','Қазақша':'kk','English':'en'}
     language=st.selectbox('Язык записи', list(speech_languages))
     recording_revision=st.session_state.get('recording_revision',0)
     audio_key=f'audio_{st.session_state.upload_generation}_{recording_revision}'

@@ -42,6 +42,16 @@ def test_class_details_stay_in_the_requested_day(question, expected):
     assert [text[a:b] for a, b in time_answer(question, text)] == [records[i] for i in expected]
 
 
+def test_kazakh_subject_includes_both_slots():
+    question = 'Дүйсенбі күні менің киберқауіпсіздік сабағы сағат нешеде?'
+    text = TEXT.replace('Основы Кибербезопасности', 'Кибер қауіпсіздігі негіздері')
+    records = [text[a:b] for a, b in time_answer(question, text)]
+    assert len(records) == 2
+    assert format_records(records, question) == (
+        'Дүйсенбі · Кибер қауіпсіздігі негіздері Л 367 (12:00–14:00)'
+    )
+
+
 def test_list_keeps_distinct_subjects_and_breaks():
     records = [MON1, MON2, 'Расписание | Понедельник | Обработка языка (14:00-15:00)',
                'Расписание | Понедельник | Основы Кибербезопасности Л 367 (16:00-17:00)']

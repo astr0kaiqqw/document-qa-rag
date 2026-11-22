@@ -19,7 +19,7 @@ from document_app.sources import inspect_source, render_source, choose_pages, ne
 ROOT=Path(__file__).resolve().parents[1]
 MAX_UPLOAD_BYTES=25*1024*1024
 MAX_DOCUMENTS=8
-PROCESSING_VERSION=4
+PROCESSING_VERSION=5
 
 
 class LocalModels:

@@ -27,9 +27,12 @@ def recognize_image(image):
                 raise RuntimeError('OCR: превышено время распознавания страницы (45 секунд).')
             return pytesseract.image_to_string(crop, lang=lang, config=f'--psm {psm}', timeout=remaining).strip()
         ordinary = read(image, 3)
+        cell_languages = 'rus+eng+kaz' if 'kaz' in languages else 'rus+eng'
         def read_grid(crop, psm):
+            if psm == 6:
+                return read(crop, psm, cell_languages)
             text = read(crop, psm)
-            return text if psm != 7 or text.lower() in DAYS else read(crop, psm, 'eng')
+            return text if text.lower() in DAYS else read(crop, psm, 'eng')
         table = read_timetable(image, read_grid)
         return ordinary + '\n\n' + table if table else ordinary
     except pytesseract.TesseractNotFoundError as error:
