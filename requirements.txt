@@ -9,3 +9,11 @@ sentence-transformers==6.1.0
 faiss-cpu==1.15.1
 sentencepiece==0.2.2
 streamlit==1.66.1
+
+# Local OCR and speech
+Pillow>=11.0,<14
+pytesseract>=0.3.13,<0.4
+pypdfium2>=4.30,<6
+faster-whisper==1.2.1
+# faster-whisper 1.2.1 uses metadata_errors removed in PyAV 19
+av>=16,<19

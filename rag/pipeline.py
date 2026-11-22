@@ -8,6 +8,7 @@ from rag.vector_store import VectorStore
 from rag.retriever import Retriever
 from rag.qa_model import QAModel
 from rag.answer_selection import rank_candidates, STRATEGIES
+from rag.timetable import time_answer, is_timetable_question, PREFIX
 
 
 class RAGPipeline:
@@ -62,9 +63,9 @@ class RAGPipeline:
         self.vector_store = None
         self.retriever = None
 
-    def load_document(self, file_path: str):
+    def load_document(self, file_path: str, *, ocr_pages=None):
         """Build a new document index; loader and indexing errors propagate."""
-        document = load_document_details(file_path)
+        document = load_document_details(file_path,ocr_pages=ocr_pages) if ocr_pages else load_document_details(file_path)
         text = document.text
         if self.embedding_model is None:
             self.embedding_model = EmbeddingModel()
@@ -101,7 +102,7 @@ class RAGPipeline:
         return {key: detailed[key] for key in
                 ("question", "answer", "source", "retrieval_score")}
 
-    def ask_detailed(self, question: str) -> dict:
+    def ask_detailed(self, question: str, *, allowed_pages=None, source_pages=None) -> dict:
         """Evaluate all retrieved evidence; expose source coordinates and ranking.
 
         `candidate` explicitly means unverified extractive output, not calibrated
@@ -111,11 +112,38 @@ class RAGPipeline:
             raise ValueError("Question must be a non-empty string")
         if self.retriever is None:
             raise RuntimeError("Load a document before asking questions")
-        hits = self.retriever.retrieve(question, top_k=self.top_k)
         response = dict(question=question, answer="", source="", retrieval_score=0.0,
                         status="no_evidence", candidates=[], selection=self.answer_selection,
                         no_answer_supported=False, document_path=self.document_path,
                         extraction_diagnostics=list(self.extraction_diagnostics))
+        # Ruled timetable OCR carries explicit weekday/cell relationships. The
+        # prose SQuAD model cannot reliably join these rows, and must not replace
+        # an absent Monday slot with a similar course on Sunday.
+        page_filter = source_pages if source_pages is not None else allowed_pages
+        table_regions = ([(0, len(self.document_text))] if page_filter is None else
+                         [(p.start, p.end) for p in self.document_pages if p.number in page_filter])
+        table_regions = [(start, end) for start, end in table_regions
+                         if PREFIX in self.document_text[start:end]]
+        if table_regions and is_timetable_question(question):
+            spans = [(start + a, start + b) for start, end in table_regions
+                     for a, b in time_answer(question, self.document_text[start:end])]
+            response.update(no_answer_supported=True, answer_method='timetable',
+                            status='no_answer', evidence_spans=[])
+            if spans:
+                records = [self.document_text[a:b] for a,b in spans]
+                evidence = [dict(start=a, end=b, text=self.document_text[a:b],
+                                 pages=[p.number for p in self.document_pages
+                                        if p.number is not None and p.start < b and p.end > a])
+                            for a,b in spans]
+                response.update(answer='\n\n'.join(records), source='\n\n'.join(records),
+                                document_start=spans[0][0], document_end=spans[-1][1],
+                                pages=sorted({n for item in evidence for n in item['pages']}),
+                                evidence_spans=evidence, status='candidate')
+            return response
+        hits = self.retriever.retrieve(question, top_k=self.top_k)
+        if source_pages is not None:
+            hits = [dict(chunk=self.document_text[p.start:p.end], index=-1, score=0.0, source_offset=p.start)
+                    for p in self.document_pages if p.number in source_pages and p.end>p.start]
         if not hits:
             return response
         if self.qa_model is None:
@@ -126,6 +154,8 @@ class RAGPipeline:
         for rank, hit in enumerate(hits,1):
             index = hit.get("index",rank-1)
             for chunk, source_offset in self._evidence_contexts(hit):
+                if allowed_pages is not None and not any(p.number in allowed_pages and p.start == source_offset for p in self.document_pages):
+                    continue
                 context_key = (source_offset,chunk)
                 if not chunk.strip() or context_key in seen_contexts:
                     continue
@@ -164,6 +194,7 @@ class RAGPipeline:
         Splitting PDF evidence by page avoids mixing adjacent slides into an
         unrelated QA context and keeps source offsets and page attribution exact.
         """
+        if 'source_offset' in hit:return [(hit['chunk'],hit['source_offset'])]
         index=hit.get('index',-1)
         metadata=self.chunk_metadata[index] if 0<=index<len(self.chunk_metadata) else None
         if not self.context_expansion or metadata is None:

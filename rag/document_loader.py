@@ -6,6 +6,7 @@ import warnings
 
 from docx import Document
 from pypdf import PdfReader
+from rag.ocr import image_text, pdf_page_text, MAX_PAGES, OCRUnavailable
 
 
 class ExtractionWarning(UserWarning):
@@ -46,17 +47,31 @@ def _load_docx(file_path: Path) -> str:
     return '\n\n'.join(p.text.strip() for p in document.paragraphs if p.text.strip())
 
 
-def load_document_details(file_path: str, *, emit_warnings=True) -> DocumentText:
+def load_document_details(file_path: str, *, emit_warnings=True, ocr_pages=None) -> DocumentText:
     path = Path(file_path)
     if not path.exists():
         raise FileNotFoundError(f'Document does not exist: {path}')
     extension = path.suffix.lower()
+    if path.stat().st_size > 25 * 1024 * 1024:
+        raise ValueError('Максимальный размер файла — 25 МБ.')
     pages=[];diagnostics=[]
     if extension == '.pdf':
         texts=[];cursor=0
-        for number,page in enumerate(PdfReader(path).pages,1):
+        pdf_pages = PdfReader(path).pages
+        if len(pdf_pages) > MAX_PAGES:
+            raise ValueError('Максимальный объём PDF — 100 страниц.')
+        for number,page in enumerate(pdf_pages,1):
             raw=page.extract_text() or ''
             normalized=normalize_pdf_text(raw).strip()
+            usable = any(c.isalnum() and unicodedata.category(c) != 'Co' for c in normalized)
+            if not usable or number in (ocr_pages or ()):
+                if not usable:normalized = ''
+                try:
+                    recognized = normalize_pdf_text(pdf_page_text(path, number - 1)).strip()
+                    if recognized:normalized = normalized + '\n\n' + recognized if normalized else recognized
+                    diagnostics.append(f'Page {number}: OCR completed' if recognized else f'Page {number}: OCR could not read text')
+                except (OCRUnavailable, RuntimeError) as error:
+                    diagnostics.append(f'Page {number}: {error}')
             if not normalized:
                 diagnostics.append(f'Page {number}: no extractable text; scanned content may require OCR')
                 pages.append(SourcePage(number,cursor,cursor,raw))
@@ -71,13 +86,17 @@ def load_document_details(file_path: str, *, emit_warnings=True) -> DocumentText
             pages.append(SourcePage(number,start,cursor,raw))
             texts.append(normalized)
         text='\n\n'.join(texts)
+    elif extension in {'.png', '.jpg', '.jpeg', '.webp'}:
+        text = image_text(path)
+        pages = [SourcePage(1, 0, len(text), text)]
+        diagnostics.append('Page 1: OCR completed')
     elif extension in {'.txt','.docx'}:
         raw=(_load_txt if extension=='.txt' else _load_docx)(path)
         text=raw.strip();pages=[SourcePage(None,0,len(text),raw)]
     else:
-        raise ValueError(f'Unsupported document extension {extension!r}. Supported extensions: .pdf, .txt, .docx.')
+        raise ValueError(f'Unsupported document extension {extension!r}. Supported extensions: .pdf, .txt, .docx, .png, .jpg, .jpeg, .webp.')
     if not text:
-        raise ValueError('Document contains no extractable text; scanned PDFs may require local OCR')
+        raise ValueError('Document contains no extractable text; OCR could not read text. ' + '; '.join(diagnostics))
     if diagnostics and emit_warnings:
         warnings.warn(f'{path.name}: '+ '; '.join(diagnostics),ExtractionWarning,stacklevel=2)
     return DocumentText(text,str(path),tuple(pages),tuple(diagnostics))
